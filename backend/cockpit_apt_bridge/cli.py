@@ -7,7 +7,16 @@ Parses command-line arguments and dispatches to appropriate command handlers.
 import sys
 from typing import NoReturn
 
-from cockpit_apt_bridge.commands import search
+from cockpit_apt_bridge.commands import (
+    search,
+    details,
+    sections,
+    list_section,
+    list_installed,
+    list_upgradable,
+    dependencies,
+    reverse_dependencies,
+)
 from cockpit_apt_bridge.utils.errors import APTBridgeError, format_error
 from cockpit_apt_bridge.utils.formatters import to_json
 
@@ -18,11 +27,24 @@ def print_usage() -> None:
 Usage: cockpit-apt-bridge <command> [arguments]
 
 Commands:
-  search QUERY        Search for packages matching QUERY
+  search QUERY                      Search for packages matching QUERY
+  details PACKAGE                   Get detailed information about a package
+  sections                          List all Debian sections with package counts
+  list-section SECTION              List all packages in a section
+  list-installed                    List all installed packages
+  list-upgradable                   List packages with available upgrades
+  dependencies PACKAGE              Get direct dependencies of a package
+  reverse-dependencies PACKAGE      Get packages that depend on a package
 
 Examples:
   cockpit-apt-bridge search nginx
-  python -m cockpit_apt_bridge search web
+  cockpit-apt-bridge details nginx
+  cockpit-apt-bridge sections
+  cockpit-apt-bridge list-section web
+  cockpit-apt-bridge list-installed
+  cockpit-apt-bridge list-upgradable
+  cockpit-apt-bridge dependencies nginx
+  cockpit-apt-bridge reverse-dependencies libc6
 """
     print(usage, file=sys.stderr)
 
@@ -51,6 +73,51 @@ def main() -> NoReturn:
                 )
             query = sys.argv[2]
             result = search.execute(query)
+
+        elif command == "details":
+            if len(sys.argv) < 3:
+                raise APTBridgeError(
+                    "Details command requires a package name argument",
+                    code="INVALID_ARGUMENTS"
+                )
+            package_name = sys.argv[2]
+            result = details.execute(package_name)
+
+        elif command == "sections":
+            result = sections.execute()
+
+        elif command == "list-section":
+            if len(sys.argv) < 3:
+                raise APTBridgeError(
+                    "List-section command requires a section name argument",
+                    code="INVALID_ARGUMENTS"
+                )
+            section_name = sys.argv[2]
+            result = list_section.execute(section_name)
+
+        elif command == "list-installed":
+            result = list_installed.execute()
+
+        elif command == "list-upgradable":
+            result = list_upgradable.execute()
+
+        elif command == "dependencies":
+            if len(sys.argv) < 3:
+                raise APTBridgeError(
+                    "Dependencies command requires a package name argument",
+                    code="INVALID_ARGUMENTS"
+                )
+            package_name = sys.argv[2]
+            result = dependencies.execute(package_name)
+
+        elif command == "reverse-dependencies":
+            if len(sys.argv) < 3:
+                raise APTBridgeError(
+                    "Reverse-dependencies command requires a package name argument",
+                    code="INVALID_ARGUMENTS"
+                )
+            package_name = sys.argv[2]
+            result = reverse_dependencies.execute(package_name)
 
         elif command in ("--help", "-h", "help"):
             print_usage()

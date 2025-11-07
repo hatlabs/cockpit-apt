@@ -57,11 +57,15 @@ def execute(query: str) -> list[dict[str, Any]]:
 
     try:
         for pkg in cache:
+            # Skip packages without a candidate version
+            if not pkg.candidate:
+                continue
+
             # Check if query matches package name or summary
             name_match = query_lower in pkg.name.lower()
 
             summary_match = False
-            if pkg.candidate and pkg.candidate.summary:
+            if pkg.candidate.summary:
                 summary_match = query_lower in pkg.candidate.summary.lower()
 
             if name_match or summary_match:
