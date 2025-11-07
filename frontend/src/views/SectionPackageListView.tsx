@@ -24,6 +24,8 @@ import {
     Toolbar,
     ToolbarContent,
     ToolbarItem,
+    Spinner,
+    Bullseye,
 } from '@patternfly/react-core';
 import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import { CubesIcon, FilterIcon } from '@patternfly/react-icons';
@@ -122,16 +124,14 @@ export function SectionPackageListView({
     if (loading) {
         return (
             <PageSection>
-                <Breadcrumb>
-                    <BreadcrumbItem to="#" onClick={onNavigateToSections}>
-                        Sections
-                    </BreadcrumbItem>
-                    <BreadcrumbItem isActive>{sectionName}</BreadcrumbItem>
-                </Breadcrumb>
-                <Title headingLevel="h1" style={{ marginTop: '16px' }}>
-                    {sectionName}
-                </Title>
-                <LoadingSkeleton variant="table" rows={10} />
+                <Bullseye>
+                    <EmptyState>
+                        <Spinner size="xl" aria-label={`Loading packages in ${sectionName} section`} />
+                        <Title headingLevel="h2" size="lg" style={{ marginTop: '1rem' }}>
+                            Loading {sectionName} packages...
+                        </Title>
+                    </EmptyState>
+                </Bullseye>
             </PageSection>
         );
     }

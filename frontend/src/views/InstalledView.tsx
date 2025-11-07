@@ -18,6 +18,8 @@ import {
     Button,
     EmptyState,
     EmptyStateBody,
+    Spinner,
+    Bullseye,
 } from '@patternfly/react-core';
 import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import { CubesIcon, SearchIcon } from '@patternfly/react-icons';
@@ -91,8 +93,14 @@ export function InstalledView({ onNavigateToPackage, onRemove }: InstalledViewPr
     if (loading) {
         return (
             <PageSection>
-                <Title headingLevel="h1">Installed Packages</Title>
-                <LoadingSkeleton variant="table" rows={10} />
+                <Bullseye>
+                    <EmptyState>
+                        <Spinner size="xl" aria-label="Loading installed packages" />
+                        <Title headingLevel="h2" size="lg" style={{ marginTop: '1rem' }}>
+                            Loading installed packages...
+                        </Title>
+                    </EmptyState>
+                </Bullseye>
             </PageSection>
         );
     }

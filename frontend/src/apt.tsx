@@ -50,40 +50,39 @@ interface Route {
 
 /**
  * Parse cockpit.location.path to extract view and params
+ *
+ * Cockpit provides paths like ['apt', 'sections', 'admin']
+ * We handle paths starting with or without 'apt'
  */
 function parseRoute(path: string[]): Route {
+    // Handle both ['apt', ...] and [...]
+    const subpath = path[0] === 'apt' ? path.slice(1) : path;
+
     // Default to search view
-    if (path.length === 0 || path[0] !== 'apt') {
-        return { view: 'search', params: {} };
-    }
-
-    const subpath = path.slice(1);
-
-    // /apt or /apt/search
     if (subpath.length === 0 || subpath[0] === 'search') {
         return { view: 'search', params: {} };
     }
 
-    // /apt/sections
+    // /sections
     if (subpath[0] === 'sections') {
         if (subpath.length === 1) {
             return { view: 'sections', params: {} };
         }
-        // /apt/sections/:section
+        // /sections/:section
         return { view: 'section-packages', params: { section: subpath[1] } };
     }
 
-    // /apt/package/:name
+    // /package/:name
     if (subpath[0] === 'package' && subpath.length > 1) {
         return { view: 'package-details', params: { name: subpath[1] } };
     }
 
-    // /apt/installed
+    // /installed
     if (subpath[0] === 'installed') {
         return { view: 'installed', params: {} };
     }
 
-    // /apt/updates
+    // /updates
     if (subpath[0] === 'updates') {
         return { view: 'updates', params: {} };
     }
@@ -94,9 +93,12 @@ function parseRoute(path: string[]): Route {
 
 /**
  * Navigate to a route
+ *
+ * cockpit.location.go() expects paths relative to the module
+ * e.g., ['sections', 'admin'] becomes /apt#/sections/admin
  */
 function navigateTo(path: string) {
-    cockpit.location.go(['apt', ...path.split('/').filter(Boolean)]);
+    cockpit.location.go(path.split('/').filter(Boolean));
 }
 
 /**

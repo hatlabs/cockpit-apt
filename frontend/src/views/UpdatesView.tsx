@@ -18,6 +18,8 @@ import {
     ToolbarContent,
     ToolbarItem,
     TextInput,
+    Spinner,
+    Bullseye,
 } from '@patternfly/react-core';
 import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import { ArrowUpIcon, CheckCircleIcon, SearchIcon } from '@patternfly/react-icons';
@@ -91,8 +93,14 @@ export function UpdatesView({ onNavigateToPackage, onInstall }: UpdatesViewProps
     if (loading) {
         return (
             <PageSection>
-                <Title headingLevel="h1">Available Updates</Title>
-                <LoadingSkeleton variant="table" rows={10} />
+                <Bullseye>
+                    <EmptyState>
+                        <Spinner size="xl" aria-label="Loading available updates" />
+                        <Title headingLevel="h2" size="lg" style={{ marginTop: '1rem' }}>
+                            Checking for updates...
+                        </Title>
+                    </EmptyState>
+                </Bullseye>
             </PageSection>
         );
     }
