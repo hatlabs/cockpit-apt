@@ -38,11 +38,14 @@ import {
     Badge,
     Label,
     Divider,
+    Spinner,
+    TextInput,
 } from '@patternfly/react-core';
 import { ExternalLinkAltIcon, CheckCircleIcon, ArrowLeftIcon } from '@patternfly/react-icons';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { usePackageDetails } from '../hooks/usePackages';
+import { getPackageFiles } from '../lib/api';
 
 export interface PackageDetailsViewProps {
     /** Package name to display */
@@ -66,6 +69,10 @@ export const PackageDetailsView: React.FC<PackageDetailsViewProps> = ({
 }) => {
     const [activeTab, setActiveTab] = useState<string | number>(0);
     const [operating, setOperating] = useState(false);
+    const [files, setFiles] = useState<string[] | null>(null);
+    const [filesLoading, setFilesLoading] = useState(false);
+    const [filesError, setFilesError] = useState<Error | null>(null);
+    const [fileFilter, setFileFilter] = useState('');
 
     const { data: details, loading, error, refetch } = usePackageDetails(packageName);
 
@@ -80,6 +87,25 @@ export const PackageDetailsView: React.FC<PackageDetailsViewProps> = ({
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [onBack]);
+
+    // Load files when Files tab is activated
+    useEffect(() => {
+        if (activeTab === 2 && details?.installed && files === null && !filesLoading) {
+            const loadFiles = async () => {
+                setFilesLoading(true);
+                setFilesError(null);
+                try {
+                    const result = await getPackageFiles(packageName);
+                    setFiles(result);
+                } catch (err) {
+                    setFilesError(err as Error);
+                } finally {
+                    setFilesLoading(false);
+                }
+            };
+            loadFiles();
+        }
+    }, [activeTab, details?.installed, packageName, files, filesLoading]);
 
     const handleInstall = async () => {
         if (!onInstall || !details) return;
@@ -350,6 +376,86 @@ export const PackageDetailsView: React.FC<PackageDetailsViewProps> = ({
                         )}
                     </div>
                 </Tab>
+
+                {/* Files tab - only shown for installed packages */}
+                {details.installed && (
+                    <Tab eventKey={2} title={<TabTitleText>Files{files ? ` (${files.length})` : ''}</TabTitleText>}>
+                        <div style={{ paddingTop: '1.5rem' }}>
+                            {filesLoading ? (
+                                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                                    <Spinner size="lg" aria-label="Loading files" />
+                                    <div style={{ marginTop: '1rem' }}>Loading files...</div>
+                                </div>
+                            ) : filesError ? (
+                                <ErrorAlert error={filesError} onRetry={() => {
+                                    setFiles(null);
+                                    setFilesError(null);
+                                }} />
+                            ) : files ? (
+                                <>
+                                    {/* Filter input */}
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <TextInput
+                                            type="search"
+                                            placeholder="Filter files by path..."
+                                            value={fileFilter}
+                                            onChange={(_event, value) => setFileFilter(value)}
+                                            aria-label="Filter files"
+                                        />
+                                    </div>
+
+                                    {/* File list */}
+                                    {(() => {
+                                        const filteredFiles = fileFilter
+                                            ? files.filter(f => f.toLowerCase().includes(fileFilter.toLowerCase()))
+                                            : files;
+
+                                        if (filteredFiles.length === 0) {
+                                            return (
+                                                <div style={{ color: 'var(--pf-v5-global--Color--200)', padding: '1rem' }}>
+                                                    No files match filter "{fileFilter}"
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <>
+                                                <div style={{
+                                                    fontFamily: 'monospace',
+                                                    fontSize: '0.9rem',
+                                                    maxHeight: '500px',
+                                                    overflowY: 'auto',
+                                                    border: '1px solid var(--pf-v5-global--BorderColor--100)',
+                                                    borderRadius: '3px',
+                                                    padding: '0.5rem'
+                                                }}>
+                                                    {filteredFiles.map((file, index) => (
+                                                        <div
+                                                            key={index}
+                                                            style={{
+                                                                padding: '0.25rem 0.5rem',
+                                                                borderBottom: index < filteredFiles.length - 1
+                                                                    ? '1px solid var(--pf-v5-global--BorderColor--100)'
+                                                                    : 'none'
+                                                            }}
+                                                        >
+                                                            {file}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                {fileFilter && (
+                                                    <div style={{ marginTop: '0.5rem', color: 'var(--pf-v5-global--Color--200)' }}>
+                                                        Showing {filteredFiles.length} of {files.length} files
+                                                    </div>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
+                                </>
+                            ) : null}
+                        </div>
+                    </Tab>
+                )}
             </Tabs>
         </PageSection>
     );

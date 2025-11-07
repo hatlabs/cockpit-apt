@@ -13,6 +13,7 @@
  *   - cockpit-apt-bridge list-upgradable
  *   - cockpit-apt-bridge dependencies <package>
  *   - cockpit-apt-bridge reverse-dependencies <package>
+ *   - cockpit-apt-bridge files <package>
  *
  * Cache Keys:
  *   - search:{query} - Search results (TTL: 2min)
@@ -23,6 +24,7 @@
  *   - upgradable - Upgradable packages (TTL: 30s)
  *   - dependencies:{package} - Dependencies (TTL: 5min)
  *   - reverse-deps:{package} - Reverse dependencies (TTL: 5min)
+ *   - files:{package} - Installed files (TTL: 5min)
  *
  * Usage:
  *   import { searchPackages, getPackageDetails } from './api';
@@ -313,6 +315,40 @@ export async function getReverseDependencies(
 
     // Execute command
     const result = await executeCommand(['reverse-dependencies', packageName]) as string[];
+
+    // Cache result
+    cache.set(cacheKey, result);
+
+    return result;
+}
+
+/**
+ * Get list of files installed by a package
+ *
+ * NOTE: This only works for installed packages. Attempting to get files for
+ * an uninstalled package will throw a PACKAGE_NOT_FOUND error.
+ *
+ * @param packageName Name of the installed package
+ * @param useCache Whether to use cached results (default: true)
+ * @returns List of absolute file paths installed by the package
+ * @throws APTError if package not installed or command fails
+ */
+export async function getPackageFiles(
+    packageName: string,
+    useCache: boolean = true
+): Promise<string[]> {
+    const cacheKey = `files:${packageName}`;
+
+    // Check cache
+    if (useCache) {
+        const cached = cache.get<string[]>(cacheKey);
+        if (cached) {
+            return cached;
+        }
+    }
+
+    // Execute command
+    const result = await executeCommand(['files', packageName]) as string[];
 
     // Cache result
     cache.set(cacheKey, result);

@@ -42,6 +42,7 @@ from cockpit_apt_bridge.commands import (
     list_upgradable,
     dependencies,
     reverse_dependencies,
+    files,
 )
 from cockpit_apt_bridge.utils.errors import APTBridgeError, format_error
 from cockpit_apt_bridge.utils.formatters import to_json
@@ -61,6 +62,7 @@ Commands:
   list-upgradable                   List packages with available upgrades
   dependencies PACKAGE              Get direct dependencies of a package
   reverse-dependencies PACKAGE      Get packages that depend on a package
+  files PACKAGE                     List files installed by a package (installed only)
 
 Examples:
   cockpit-apt-bridge search nginx
@@ -71,6 +73,7 @@ Examples:
   cockpit-apt-bridge list-upgradable
   cockpit-apt-bridge dependencies nginx
   cockpit-apt-bridge reverse-dependencies libc6
+  cockpit-apt-bridge files nginx
 """
     print(usage, file=sys.stderr)
 
@@ -144,6 +147,15 @@ def main() -> NoReturn:
                 )
             package_name = sys.argv[2]
             result = reverse_dependencies.execute(package_name)
+
+        elif command == "files":
+            if len(sys.argv) < 3:
+                raise APTBridgeError(
+                    "Files command requires a package name argument",
+                    code="INVALID_ARGUMENTS"
+                )
+            package_name = sys.argv[2]
+            result = files.execute(package_name)
 
         elif command in ("--help", "-h", "help"):
             print_usage()

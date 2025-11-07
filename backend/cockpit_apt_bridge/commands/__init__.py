@@ -15,6 +15,7 @@ from cockpit_apt_bridge.commands import (
     list_upgradable,
     dependencies,
     reverse_dependencies,
+    files,
 )
 
 __all__ = [
@@ -26,4 +27,5 @@ __all__ = [
     "list_upgradable",
     "dependencies",
     "reverse_dependencies",
+    "files",
 ]
