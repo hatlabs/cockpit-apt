@@ -2,7 +2,6 @@
 Unit tests for search command.
 """
 
-import sys
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -10,57 +9,7 @@ import pytest
 
 from cockpit_apt_bridge.commands import search
 from cockpit_apt_bridge.utils.errors import APTBridgeError
-
-
-class MockPackage:
-    """Mock apt.Package for testing."""
-
-    def __init__(
-        self,
-        name: str,
-        summary: str = "Test package",
-        version: str = "1.0.0",
-        installed: bool = False,
-        section: str = "utils",
-    ):
-        self.name = name
-        self.is_installed = installed
-        self.candidate = MagicMock()
-        self.candidate.summary = summary
-        self.candidate.version = version
-        self.candidate.section = section
-        self.installed = MagicMock() if installed else None
-        if installed:
-            self.installed.version = version
-
-
-class MockCache:
-    """Mock apt.Cache for testing."""
-
-    def __init__(self, packages: list[MockPackage]):
-        self._packages = packages
-
-    def __iter__(self):
-        return iter(self._packages)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        pass
-
-
-@pytest.fixture
-def mock_apt_cache():
-    """Fixture providing a mock APT cache with test packages."""
-    packages = [
-        MockPackage("nginx", "HTTP server", "1.18.0", False, "web"),
-        MockPackage("nginx-common", "Nginx common files", "1.18.0", True, "web"),
-        MockPackage("apache2", "Apache HTTP Server", "2.4.52", False, "web"),
-        MockPackage("python3", "Python 3 interpreter", "3.11.2", True, "python"),
-        MockPackage("python3-apt", "Python APT bindings", "2.4.0", True, "python"),
-    ]
-    return MockCache(packages)
+from tests.conftest import MockPackage, MockCache
 
 
 def test_search_valid_query(mock_apt_cache):
