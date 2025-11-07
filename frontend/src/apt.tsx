@@ -16,23 +16,21 @@
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-    Page,
-    PageSidebar,
-    PageSidebarBody,
-    Masthead,
-    MastheadMain,
-    MastheadBrand,
-    MastheadLogo,
-    PageSection,
-    Nav,
-    NavList,
-    NavItem,
+    Tabs,
+    Tab,
+    TabTitleText,
     Title,
+    Page,
+    PageSection,
+    Stack,
 } from '@patternfly/react-core';
 import { SearchIcon, CubesIcon, LayerGroupIcon, ArrowUpIcon } from '@patternfly/react-icons';
 import { SearchView } from './views/SearchView';
 import { SectionsView } from './views/SectionsView';
 import { PackageDetailsView } from './views/PackageDetailsView';
+import { InstalledView } from './views/InstalledView';
+import { UpdatesView } from './views/UpdatesView';
+import { SectionPackageListView } from './views/SectionPackageListView';
 // Import both PatternFly CSS files
 // patternfly-base.css contains design tokens (--pf-t--global--* variables)
 // patternfly.css contains component styles that reference those tokens
@@ -104,7 +102,6 @@ function navigateTo(path: string) {
  */
 function App() {
     const [route, setRoute] = useState<Route>(parseRoute(cockpit.location.path));
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     // Listen to cockpit location changes
     useEffect(() => {
@@ -153,78 +150,40 @@ function App() {
         }
     };
 
-    // Determine active nav item
-    const getActiveItem = () => {
+    // Determine active tab
+    const getActiveTab = () => {
         switch (route.view) {
             case 'search':
-                return 'search';
+                return 0;
             case 'sections':
             case 'section-packages':
-                return 'sections';
+                return 1;
             case 'installed':
-                return 'installed';
+                return 2;
             case 'updates':
-                return 'updates';
+                return 3;
             default:
-                return 'search';
+                return 0;
         }
     };
 
-    // Render navigation
-    const nav = (
-        <Nav aria-label="Global">
-            <NavList>
-                <NavItem
-                    itemId="search"
-                    isActive={getActiveItem() === 'search'}
-                    onClick={handleNavigateToSearch}
-                >
-                    <SearchIcon /> Search
-                </NavItem>
-                <NavItem
-                    itemId="sections"
-                    isActive={getActiveItem() === 'sections'}
-                    onClick={handleNavigateToSections}
-                >
-                    <LayerGroupIcon /> Sections
-                </NavItem>
-                <NavItem
-                    itemId="installed"
-                    isActive={getActiveItem() === 'installed'}
-                    onClick={handleNavigateToInstalled}
-                >
-                    <CubesIcon /> Installed
-                </NavItem>
-                <NavItem
-                    itemId="updates"
-                    isActive={getActiveItem() === 'updates'}
-                    onClick={handleNavigateToUpdates}
-                >
-                    <ArrowUpIcon /> Updates
-                </NavItem>
-            </NavList>
-        </Nav>
-    );
-
-    const sidebar = (
-        <PageSidebar>
-            <PageSidebarBody>{nav}</PageSidebarBody>
-        </PageSidebar>
-    );
-
-    const masthead = (
-        <Masthead>
-            <MastheadMain>
-                <MastheadBrand>
-                    <MastheadLogo>
-                        <Title headingLevel="h1" size="2xl">
-                            APT Package Manager
-                        </Title>
-                    </MastheadLogo>
-                </MastheadBrand>
-            </MastheadMain>
-        </Masthead>
-    );
+    // Handle tab change
+    const handleTabChange = (_event: React.MouseEvent<HTMLElement, MouseEvent>, tabIndex: number | string) => {
+        switch (tabIndex) {
+            case 0:
+                handleNavigateToSearch();
+                break;
+            case 1:
+                handleNavigateToSections();
+                break;
+            case 2:
+                handleNavigateToInstalled();
+                break;
+            case 3:
+                handleNavigateToUpdates();
+                break;
+        }
+    };
 
     // Render current view
     const renderView = () => {
@@ -247,12 +206,13 @@ function App() {
 
             case 'section-packages':
                 return (
-                    <PageSection>
-                        <Title headingLevel="h1">
-                            Packages in {route.params.section}
-                        </Title>
-                        <p>Section package list view - Coming soon</p>
-                    </PageSection>
+                    <SectionPackageListView
+                        sectionName={route.params.section}
+                        onNavigateToPackage={handleNavigateToPackage}
+                        onNavigateToSections={handleNavigateToSections}
+                        onInstall={handleInstall}
+                        onRemove={handleRemove}
+                    />
                 );
 
             case 'package-details':
@@ -267,18 +227,18 @@ function App() {
 
             case 'installed':
                 return (
-                    <PageSection>
-                        <Title headingLevel="h1">Installed Packages</Title>
-                        <p>Installed packages view - Coming soon</p>
-                    </PageSection>
+                    <InstalledView
+                        onNavigateToPackage={handleNavigateToPackage}
+                        onRemove={handleRemove}
+                    />
                 );
 
             case 'updates':
                 return (
-                    <PageSection>
-                        <Title headingLevel="h1">Available Updates</Title>
-                        <p>Updates view - Coming soon</p>
-                    </PageSection>
+                    <UpdatesView
+                        onNavigateToPackage={handleNavigateToPackage}
+                        onInstall={handleInstall}
+                    />
                 );
 
             default:
@@ -292,16 +252,53 @@ function App() {
     };
 
     return (
-        <Page
-            masthead={masthead}
-            sidebar={sidebar}
-            isManagedSidebar
-            defaultManagedSidebarIsOpen={isSidebarOpen}
-            onPageResize={(_event, { mobileView, windowSize }) => {
-                setIsSidebarOpen(!mobileView);
-            }}
-        >
-            {renderView()}
+        <Page>
+            <PageSection variant="light" padding={{ default: 'noPadding' }}>
+                <Tabs
+                    activeKey={getActiveTab()}
+                    onSelect={handleTabChange}
+                    isBox={false}
+                    aria-label="APT navigation"
+                >
+                    <Tab
+                        eventKey={0}
+                        title={
+                            <TabTitleText>
+                                <SearchIcon /> Search
+                            </TabTitleText>
+                        }
+                    />
+                    <Tab
+                        eventKey={1}
+                        title={
+                            <TabTitleText>
+                                <LayerGroupIcon /> Sections
+                            </TabTitleText>
+                        }
+                    />
+                    <Tab
+                        eventKey={2}
+                        title={
+                            <TabTitleText>
+                                <CubesIcon /> Installed
+                            </TabTitleText>
+                        }
+                    />
+                    <Tab
+                        eventKey={3}
+                        title={
+                            <TabTitleText>
+                                <ArrowUpIcon /> Updates
+                            </TabTitleText>
+                        }
+                    />
+                </Tabs>
+            </PageSection>
+            <PageSection hasBodyWrapper={false}>
+                <Stack hasGutter>
+                    {renderView()}
+                </Stack>
+            </PageSection>
         </Page>
     );
 }

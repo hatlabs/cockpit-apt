@@ -18,7 +18,10 @@
 
 import React, { useState } from 'react';
 import {
-    PageSection,
+    Card,
+    CardHeader,
+    CardTitle,
+    CardBody,
     Title,
     EmptyState,
     EmptyStateBody,
@@ -85,18 +88,20 @@ export const SearchView: React.FC<SearchViewProps> = ({
     };
 
     return (
-        <PageSection>
-            <Title headingLevel="h1" size="2xl" style={{ marginBottom: '1.5rem' }}>
-                Search Packages
-            </Title>
-
-            <SearchBar
-                value={query}
-                onChange={setQuery}
-                loading={loading}
-                placeholder="Search for packages by name or description..."
-                style={{ marginBottom: '1.5rem' }}
-            />
+        <Card>
+            <CardHeader>
+                <CardTitle>
+                    <Title headingLevel="h2">Search Packages</Title>
+                </CardTitle>
+            </CardHeader>
+            <CardBody>
+                <SearchBar
+                    value={query}
+                    onChange={setQuery}
+                    loading={loading}
+                    placeholder="Search for packages by name or description..."
+                    style={{ marginBottom: '1.5rem' }}
+                />
 
             {error && (
                 <ErrorAlert
@@ -220,6 +225,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                     </div>
                 </div>
             )}
-        </PageSection>
+            </CardBody>
+        </Card>
     );
 };
