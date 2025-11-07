@@ -107,7 +107,16 @@ export const SectionsView: React.FC<SectionsViewProps> = ({
                                 <Card
                                     isClickable
                                     onClick={() => handleSectionClick(section.name)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            handleSectionClick(section.name);
+                                        }
+                                    }}
                                     style={{ height: '100%' }}
+                                    tabIndex={0}
+                                    role="button"
+                                    aria-label={`View ${section.count} packages in ${getSectionDisplayName(section.name)} section`}
                                 >
                                     <CardHeader>
                                         {getSectionIcon(section.name)}

@@ -21,7 +21,7 @@
  *   />
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     PageSection,
     Title,
@@ -39,7 +39,7 @@ import {
     Label,
     Divider,
 } from '@patternfly/react-core';
-import { ExternalLinkAltIcon, CheckCircleIcon } from '@patternfly/react-icons';
+import { ExternalLinkAltIcon, CheckCircleIcon, ArrowLeftIcon } from '@patternfly/react-icons';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { usePackageDetails } from '../hooks/usePackages';
@@ -68,6 +68,18 @@ export const PackageDetailsView: React.FC<PackageDetailsViewProps> = ({
     const [operating, setOperating] = useState(false);
 
     const { data: details, loading, error, refetch } = usePackageDetails(packageName);
+
+    // Add Escape key handler to go back
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && onBack) {
+                onBack();
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [onBack]);
 
     const handleInstall = async () => {
         if (!onInstall || !details) return;
@@ -130,6 +142,19 @@ export const PackageDetailsView: React.FC<PackageDetailsViewProps> = ({
 
     return (
         <PageSection>
+            {/* Back button */}
+            {onBack && (
+                <Button
+                    variant="link"
+                    onClick={onBack}
+                    icon={<ArrowLeftIcon />}
+                    style={{ marginBottom: '1rem', paddingLeft: 0 }}
+                    aria-label="Go back to previous page (Escape)"
+                >
+                    Back
+                </Button>
+            )}
+
             {/* Header */}
             <Flex
                 justifyContent={{ default: 'justifyContentSpaceBetween' }}
