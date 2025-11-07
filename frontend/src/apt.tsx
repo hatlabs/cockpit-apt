@@ -22,6 +22,7 @@ import {
     Masthead,
     MastheadMain,
     MastheadBrand,
+    MastheadLogo,
     PageSection,
     Nav,
     NavList,
@@ -210,9 +211,11 @@ function App() {
         <Masthead>
             <MastheadMain>
                 <MastheadBrand>
-                    <Title headingLevel="h1" size="2xl">
-                        APT Package Manager
-                    </Title>
+                    <MastheadLogo>
+                        <Title headingLevel="h1" size="2xl">
+                            APT Package Manager
+                        </Title>
+                    </MastheadLogo>
                 </MastheadBrand>
             </MastheadMain>
         </Masthead>

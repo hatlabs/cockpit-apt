@@ -21,7 +21,6 @@ import {
     PageSection,
     Title,
     EmptyState,
-    EmptyStateIcon,
     EmptyStateBody,
     Button,
 } from '@patternfly/react-core';
@@ -111,11 +110,11 @@ export const SearchView: React.FC<SearchViewProps> = ({
             {loading && <LoadingSkeleton variant="table" rows={5} />}
 
             {!loading && !error && query.length >= 2 && packages && packages.length === 0 && (
-                <EmptyState>
-                    <EmptyStateIcon icon={SearchIcon} />
-                    <Title headingLevel="h4" size="lg">
-                        No results found
-                    </Title>
+                <EmptyState
+                    icon={SearchIcon}
+                    titleText="No results found"
+                    headingLevel="h4"
+                >
                     <EmptyStateBody>
                         No packages match your search query &quot;{query}&quot;.
                         Try different keywords or check spelling.
@@ -124,11 +123,11 @@ export const SearchView: React.FC<SearchViewProps> = ({
             )}
 
             {!loading && !error && query.length < 2 && (
-                <EmptyState>
-                    <EmptyStateIcon icon={SearchIcon} />
-                    <Title headingLevel="h4" size="lg">
-                        Start searching
-                    </Title>
+                <EmptyState
+                    icon={SearchIcon}
+                    titleText="Start searching"
+                    headingLevel="h4"
+                >
                     <EmptyStateBody>
                         Type at least 2 characters to search for packages.
                     </EmptyStateBody>
@@ -190,7 +189,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                                             onRemove && (
                                                 <Button
                                                     variant="danger"
-                                                    isSmall
+                                                    size="sm"
                                                     onClick={() => handleRemove(pkg.name)}
                                                     isLoading={operatingPackage === pkg.name}
                                                     isDisabled={operatingPackage === pkg.name}
@@ -202,7 +201,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                                             onInstall && (
                                                 <Button
                                                     variant="primary"
-                                                    isSmall
+                                                    size="sm"
                                                     onClick={() => handleInstall(pkg.name)}
                                                     isLoading={operatingPackage === pkg.name}
                                                     isDisabled={operatingPackage === pkg.name}

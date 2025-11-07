@@ -26,7 +26,6 @@ import {
     Grid,
     GridItem,
     EmptyState,
-    EmptyStateIcon,
     EmptyStateBody,
     Badge,
 } from '@patternfly/react-core';
@@ -44,9 +43,9 @@ export interface SectionsViewProps {
  * Get a default icon for a section
  * In future, this could be customized via configuration
  */
-function getSectionIcon(sectionName: string): React.ReactNode {
+function getSectionIcon(_sectionName: string): React.ReactNode {
     // Default icon for all sections
-    return <FolderIcon size="xl" style={{ color: 'var(--pf-v5-global--primary-color--100)' }} />;
+    return <FolderIcon style={{ fontSize: '2rem', color: 'var(--pf-v5-global--primary-color--100)' }} />;
 }
 
 /**
@@ -85,11 +84,11 @@ export const SectionsView: React.FC<SectionsViewProps> = ({
             {loading && <LoadingSkeleton variant="card" rows={8} />}
 
             {!loading && !error && sections && sections.length === 0 && (
-                <EmptyState>
-                    <EmptyStateIcon icon={CubesIcon} />
-                    <Title headingLevel="h4" size="lg">
-                        No sections found
-                    </Title>
+                <EmptyState
+                    icon={CubesIcon}
+                    titleText="No sections found"
+                    headingLevel="h4"
+                >
                     <EmptyStateBody>
                         No package sections are available in the APT cache.
                     </EmptyStateBody>

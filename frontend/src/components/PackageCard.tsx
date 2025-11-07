@@ -28,6 +28,7 @@ import {
     CardFooter,
     Button,
     Badge,
+    Label,
     Flex,
     FlexItem,
 } from '@patternfly/react-core';
@@ -97,11 +98,11 @@ export const PackageCard: React.FC<PackageCardProps> = ({
             <CardHeader>
                 <Flex alignItems={{ default: 'alignItemsCenter' }}>
                     <FlexItem>
-                        <CubeIcon size="lg" style={{ color: 'var(--pf-v5-global--primary-color--100)' }} />
+                        <CubeIcon />
                     </FlexItem>
                     {pkg.installed && (
                         <FlexItem>
-                            <Badge icon={<CheckCircleIcon />}>Installed</Badge>
+                            <Label color="green" icon={<CheckCircleIcon />}>Installed</Label>
                         </FlexItem>
                     )}
                 </Flex>
@@ -127,7 +128,7 @@ export const PackageCard: React.FC<PackageCardProps> = ({
                     onRemove && (
                         <Button
                             variant="danger"
-                            isSmall
+                            size="sm"
                             isBlock
                             onClick={handleRemove}
                             isLoading={loading}
@@ -140,7 +141,7 @@ export const PackageCard: React.FC<PackageCardProps> = ({
                     onInstall && (
                         <Button
                             variant="primary"
-                            isSmall
+                            size="sm"
                             isBlock
                             onClick={handleInstall}
                             isLoading={loading}
