@@ -3,13 +3,13 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { Package, PackageDetails, Section, Dependency } from '../types';
+import type { Package, PackageDetails, Section, Dependency, UpgradablePackage } from '../types';
 import * as api from '../api';
 import { cache } from '../cache-manager';
 
 // Mock cockpit global
 const mockSpawn = vi.fn();
-global.cockpit = {
+(globalThis as any).cockpit = {
     spawn: mockSpawn,
     file: vi.fn(),
     location: {
@@ -332,8 +332,8 @@ describe('API Functions', () => {
 
     describe('listUpgradablePackages', () => {
         it('should list upgradable packages', async () => {
-            const packages: Package[] = [
-                { name: 'curl', summary: 'HTTP client', version: '7.75.0', installed: true, section: 'web' },
+            const packages: UpgradablePackage[] = [
+                { name: 'curl', summary: 'HTTP client', installedVersion: '7.74.0', candidateVersion: '7.75.0' },
             ];
 
             mockSpawn.mockReturnValue(createSuccessfulSpawn(packages));
@@ -348,8 +348,8 @@ describe('API Functions', () => {
         });
 
         it('should cache upgradable packages', async () => {
-            const packages: Package[] = [
-                { name: 'curl', summary: 'HTTP client', version: '7.75.0', installed: true, section: 'web' },
+            const packages: UpgradablePackage[] = [
+                { name: 'curl', summary: 'HTTP client', installedVersion: '7.74.0', candidateVersion: '7.75.0' },
             ];
 
             mockSpawn.mockReturnValue(createSuccessfulSpawn(packages));
@@ -495,7 +495,7 @@ describe('API Functions', () => {
                     setTimeout(() => callback('invalid json'), 0);
                     return spawn;
                 },
-                fail: (callback: (error: unknown, data: string | null) => void) => spawn,
+                fail: (_callback: (error: unknown, data: string | null) => void) => spawn,
                 done: (callback: () => void) => {
                     setTimeout(callback, 0);
                     return spawn;

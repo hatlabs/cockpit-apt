@@ -7,7 +7,7 @@
  * - Upgrade all packages at once
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
     PageSection,
     Title,
@@ -22,10 +22,9 @@ import {
     Bullseye,
 } from '@patternfly/react-core';
 import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
-import { ArrowUpIcon, CheckCircleIcon, SearchIcon } from '@patternfly/react-icons';
+import { CheckCircleIcon, SearchIcon } from '@patternfly/react-icons';
 import { listUpgradablePackages } from '../lib/api';
-import { Package } from '../lib/types';
-import { LoadingSkeleton } from '../components/LoadingSkeleton';
+import { UpgradablePackage } from '../lib/types';
 import { ErrorAlert } from '../components/ErrorAlert';
 
 interface UpdatesViewProps {
@@ -34,8 +33,8 @@ interface UpdatesViewProps {
 }
 
 export function UpdatesView({ onNavigateToPackage, onInstall }: UpdatesViewProps) {
-    const [packages, setPackages] = useState<Package[]>([]);
-    const [filteredPackages, setFilteredPackages] = useState<Package[]>([]);
+    const [packages, setPackages] = useState<UpgradablePackage[]>([]);
+    const [filteredPackages, setFilteredPackages] = useState<UpgradablePackage[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
     const [filterText, setFilterText] = useState('');
@@ -141,13 +140,12 @@ export function UpdatesView({ onNavigateToPackage, onInstall }: UpdatesViewProps
 
             <Toolbar>
                 <ToolbarContent>
-                    <ToolbarItem variant="search-filter">
+                    <ToolbarItem>
                         <TextInput
                             type="search"
                             placeholder="Filter by name or description..."
                             value={filterText}
                             onChange={(_event, value) => setFilterText(value)}
-                            icon={<SearchIcon />}
                             aria-label="Filter updates"
                         />
                     </ToolbarItem>
@@ -198,9 +196,9 @@ export function UpdatesView({ onNavigateToPackage, onInstall }: UpdatesViewProps
                                         {pkg.name}
                                     </Button>
                                 </Td>
-                                <Td>{pkg.installedVersion || pkg.version}</Td>
+                                <Td>{pkg.installedVersion}</Td>
                                 <Td>
-                                    <strong>{pkg.candidateVersion || pkg.version}</strong>
+                                    <strong>{pkg.candidateVersion}</strong>
                                 </Td>
                                 <Td>{pkg.summary}</Td>
                                 <Td>

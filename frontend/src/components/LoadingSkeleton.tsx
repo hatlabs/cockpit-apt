@@ -124,7 +124,7 @@ export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({
     variant,
     rows = 3,
     height,
-    width,
+    width: _width,
     className,
 }) => {
     if (variant === 'table') {

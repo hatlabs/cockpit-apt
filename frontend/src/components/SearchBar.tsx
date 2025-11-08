@@ -57,6 +57,9 @@ export interface SearchBarProps {
 
     /** Additional CSS class name */
     className?: string;
+
+    /** Optional style object */
+    style?: React.CSSProperties;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({

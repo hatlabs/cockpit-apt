@@ -82,7 +82,7 @@ export class CacheManager {
     private getTTL(key: string): number {
         // Check for exact match first
         if (key in DEFAULT_TTLS) {
-            return DEFAULT_TTLS[key];
+            return DEFAULT_TTLS[key] || 5 * 60 * 1000;
         }
 
         // Check for prefix match

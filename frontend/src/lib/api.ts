@@ -33,7 +33,7 @@
  *   const details = await getPackageDetails('nginx');
  */
 
-import type { Package, PackageDetails, Section, Dependency } from './types';
+import type { Package, PackageDetails, Section, Dependency, UpgradablePackage } from './types';
 import { cache } from './cache-manager';
 import { translateError } from './error-handler';
 
@@ -240,19 +240,19 @@ export async function listInstalledPackages(useCache: boolean = true): Promise<P
  * @returns List of upgradable packages sorted by name
  * @throws APTError if command fails
  */
-export async function listUpgradablePackages(useCache: boolean = true): Promise<Package[]> {
+export async function listUpgradablePackages(useCache: boolean = true): Promise<UpgradablePackage[]> {
     const cacheKey = 'upgradable';
 
     // Check cache
     if (useCache) {
-        const cached = cache.get<Package[]>(cacheKey);
+        const cached = cache.get<UpgradablePackage[]>(cacheKey);
         if (cached) {
             return cached;
         }
     }
 
     // Execute command
-    const result = await executeCommand(['list-upgradable']) as Package[];
+    const result = await executeCommand(['list-upgradable']) as UpgradablePackage[];
 
     // Cache result
     cache.set(cacheKey, result);

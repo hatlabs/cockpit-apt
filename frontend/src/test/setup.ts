@@ -4,7 +4,7 @@
  * This file runs before all tests to set up the testing environment.
  */
 
-import { expect, afterEach } from 'vitest';
+import { afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
 // Cleanup after each test
@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 // Mock cockpit global
-global.cockpit = {
+(globalThis as any).cockpit = {
   spawn: () => ({
     stream: () => ({ done: () => ({ fail: () => ({}) }) }),
     done: () => ({ fail: () => ({}) }),

@@ -69,12 +69,12 @@ function parseRoute(path: string[]): Route {
             return { view: 'sections', params: {} };
         }
         // /sections/:section
-        return { view: 'section-packages', params: { section: subpath[1] } };
+        return { view: 'section-packages', params: { section: subpath[1] || '' } };
     }
 
     // /package/:name
     if (subpath[0] === 'package' && subpath.length > 1) {
-        return { view: 'package-details', params: { name: subpath[1] } };
+        return { view: 'package-details', params: { name: subpath[1] || '' } };
     }
 
     // /installed
@@ -117,7 +117,7 @@ function App() {
         handleLocationChange();
 
         // Listen for changes
-        const cleanup = cockpit.addEventListener('locationchanged', handleLocationChange);
+        const cleanup = (cockpit as any).addEventListener('locationchanged', handleLocationChange);
 
         return cleanup;
     }, []);
@@ -203,7 +203,7 @@ function App() {
             case 'section-packages':
                 return (
                     <SectionPackageListView
-                        sectionName={route.params.section}
+                        sectionName={route.params.section || ''}
                         onNavigateToPackage={handleNavigateToPackage}
                         onNavigateToSections={handleNavigateToSections}
                         onInstall={handleInstall}
@@ -214,7 +214,7 @@ function App() {
             case 'package-details':
                 return (
                     <PackageDetailsView
-                        packageName={route.params.name}
+                        packageName={route.params.name || ''}
                         onInstall={handleInstall}
                         onRemove={handleRemove}
                         onBack={handleBack}
@@ -249,7 +249,7 @@ function App() {
 
     return (
         <Page>
-            <PageSection variant="light" padding={{ default: 'noPadding' }}>
+            <PageSection padding={{ default: 'noPadding' }}>
                 <Tabs
                     activeKey={getActiveTab()}
                     onSelect={handleTabChange}
