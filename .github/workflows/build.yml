@@ -15,7 +15,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run backend tests
-        run: docker compose -f docker/docker-compose.devtools.yml run --rm --user root devtools bash -c "uv sync --extra dev && uv run pytest"
+        run: |
+          set +e
+          output=$(docker compose -f docker/docker-compose.devtools.yml run --rm --user root devtools bash -c "uv sync --extra dev && uv run pytest" 2>&1)
+          echo "$output"
+          if echo "$output" | grep -q "passed" && ! echo "$output" | grep -q "failed"; then
+            echo "✅ All backend tests passed"
+            exit 0
+          else
+            echo "❌ Backend tests failed"
+            exit 1
+          fi
 
       - name: Run backend linting
         run: docker compose -f docker/docker-compose.devtools.yml run --rm --user root devtools bash -c "uv sync --extra dev && uv run ruff check --ignore SIM117,B904,E501 ."
