@@ -22,7 +22,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import type { Package, PackageDetails, Section } from '../lib/types';
+import type { Package, PackageDetails, Section, UpgradablePackage } from '../lib/types';
 import * as api from '../lib/api';
 import { APTError } from '../lib/error-handler';
 
@@ -327,8 +327,8 @@ export function useInstalledPackages(enabled: boolean = true): UseQueryResult<Pa
  *   return count > 0 ? <Badge>{count} updates</Badge> : null;
  * }
  */
-export function useUpgradablePackages(enabled: boolean = true): UseQueryResult<Package[]> {
-    const [data, setData] = useState<Package[] | null>(null);
+export function useUpgradablePackages(enabled: boolean = true): UseQueryResult<UpgradablePackage[]> {
+    const [data, setData] = useState<UpgradablePackage[] | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<APTError | null>(null);
 

@@ -7,7 +7,7 @@
  * - Breadcrumb navigation
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
     PageSection,
     Title,
@@ -31,7 +31,6 @@ import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import { CubesIcon, FilterIcon } from '@patternfly/react-icons';
 import { listPackagesBySection } from '../lib/api';
 import { Package } from '../lib/types';
-import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { ErrorAlert } from '../components/ErrorAlert';
 
 interface SectionPackageListViewProps {

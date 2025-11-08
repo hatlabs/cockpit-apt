@@ -137,9 +137,9 @@ export class ProgressReporter {
             return;
         }
 
-        const type = parts[0]; // 'status' or 'pmstatus'
-        const packageName = parts[1];
-        const percentageStr = parts[2];
+        // parts[0] is 'status' or 'pmstatus' - we don't need it
+        const packageName = parts[1] || '';
+        const percentageStr = parts[2] || '0';
         const message = parts.slice(3).join(':'); // Rejoin message parts
 
         // Parse percentage

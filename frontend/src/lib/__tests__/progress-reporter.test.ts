@@ -7,7 +7,6 @@ import {
     ProgressReporter,
     createSimpleReporter,
     createMessageReporter,
-    type ProgressInfo,
 } from '../progress-reporter';
 
 describe('ProgressReporter', () => {

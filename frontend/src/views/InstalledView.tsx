@@ -7,7 +7,7 @@
  * - Filter/search within installed packages
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
     PageSection,
     Title,
@@ -25,7 +25,6 @@ import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import { CubesIcon, SearchIcon } from '@patternfly/react-icons';
 import { listInstalledPackages } from '../lib/api';
 import { Package } from '../lib/types';
-import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { ErrorAlert } from '../components/ErrorAlert';
 
 interface InstalledViewProps {
@@ -138,13 +137,12 @@ export function InstalledView({ onNavigateToPackage, onRemove }: InstalledViewPr
 
             <Toolbar>
                 <ToolbarContent>
-                    <ToolbarItem variant="search-filter">
+                    <ToolbarItem>
                         <TextInput
                             type="search"
                             placeholder="Filter by name or description..."
                             value={filterText}
                             onChange={(_event, value) => setFilterText(value)}
-                            icon={<SearchIcon />}
                             aria-label="Filter installed packages"
                         />
                     </ToolbarItem>

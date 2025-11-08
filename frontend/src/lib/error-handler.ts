@@ -65,8 +65,8 @@ export class APTError extends Error {
         this.details = details;
 
         // Maintains proper stack trace for where our error was thrown (V8 only)
-        if (Error.captureStackTrace) {
-            Error.captureStackTrace(this, APTError);
+        if (typeof (Error as any).captureStackTrace === 'function') {
+            (Error as any).captureStackTrace(this, APTError);
         }
     }
 
@@ -93,7 +93,7 @@ export class APTError extends Error {
      *
      * @returns String representation
      */
-    toString(): string {
+    override toString(): string {
         if (this.details) {
             return `${this.name} [${this.code}]: ${this.message} (${this.details})`;
         }

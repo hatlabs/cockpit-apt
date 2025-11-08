@@ -46,6 +46,9 @@ export interface ErrorAlertProps {
     /** Title override (default: "Error") */
     title?: string;
 
+    /** Optional style object */
+    style?: React.CSSProperties;
+
     /** Additional CSS class name */
     className?: string;
 }
