@@ -4,10 +4,7 @@ Tests for install command.
 Tests the install command using mocked subprocess to avoid requiring root/APT.
 """
 
-import io
-import json
-import os
-from unittest.mock import MagicMock, Mock, mock_open, patch
+from unittest.mock import Mock, patch
 
 import pytest
 

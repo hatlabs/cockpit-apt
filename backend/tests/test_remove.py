@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from cockpit_apt_bridge.commands.remove import ESSENTIAL_PACKAGES, execute
+from cockpit_apt_bridge.commands.remove import execute
 from cockpit_apt_bridge.utils.errors import APTBridgeError, PackageNotFoundError
 
 
