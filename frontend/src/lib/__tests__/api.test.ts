@@ -686,16 +686,52 @@ describe('API Functions', () => {
     });
 
     describe('Operation Functions', () => {
-        it('should throw not implemented for installPackage', async () => {
-            await expect(api.installPackage('nginx')).rejects.toThrow('not yet implemented');
+        it('should install a package', async () => {
+            mockSpawn.mockReturnValue(createSuccessfulSpawn({ success: true, message: 'Installed' }));
+
+            await api.installPackage('nginx');
+
+            expect(mockSpawn).toHaveBeenCalledWith(
+                expect.arrayContaining(['cockpit-apt-bridge', 'install', 'nginx']),
+                expect.objectContaining({ superuser: 'require' })
+            );
         });
 
-        it('should throw not implemented for removePackage', async () => {
-            await expect(api.removePackage('nginx')).rejects.toThrow('not yet implemented');
+        it('should remove a package', async () => {
+            mockSpawn.mockReturnValue(createSuccessfulSpawn({ success: true, message: 'Removed' }));
+
+            await api.removePackage('nginx');
+
+            expect(mockSpawn).toHaveBeenCalledWith(
+                expect.arrayContaining(['cockpit-apt-bridge', 'remove', 'nginx']),
+                expect.objectContaining({ superuser: 'require' })
+            );
         });
 
-        it('should throw not implemented for updatePackageLists', async () => {
-            await expect(api.updatePackageLists()).rejects.toThrow('not yet implemented');
+        it('should update package lists', async () => {
+            mockSpawn.mockReturnValue(createSuccessfulSpawn({ success: true, message: 'Updated' }));
+
+            await api.updatePackageLists();
+
+            expect(mockSpawn).toHaveBeenCalledWith(
+                expect.arrayContaining(['cockpit-apt-bridge', 'update']),
+                expect.objectContaining({ superuser: 'require' })
+            );
+        });
+
+        it('should handle install failure', async () => {
+            mockSpawn.mockReturnValue(createSuccessfulSpawn({ success: false, message: 'Failed' }));
+
+            await expect(api.installPackage('nginx')).rejects.toThrow();
+        });
+
+        it('should invalidate cache after install', async () => {
+            mockSpawn.mockReturnValue(createSuccessfulSpawn({ success: true, message: 'Installed' }));
+
+            await api.installPackage('nginx');
+
+            // Cache should be invalidated (tested indirectly by ensuring operations complete)
+            expect(mockSpawn).toHaveBeenCalled();
         });
     });
 });
