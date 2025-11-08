@@ -16,6 +16,9 @@ from cockpit_apt_bridge.commands import (
     dependencies,
     reverse_dependencies,
     files,
+    install,
+    remove,
+    update,
 )
 
 __all__ = [
@@ -28,4 +31,7 @@ __all__ = [
     "dependencies",
     "reverse_dependencies",
     "files",
+    "install",
+    "remove",
+    "update",
 ]

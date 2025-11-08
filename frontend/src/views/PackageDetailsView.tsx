@@ -45,7 +45,7 @@ import { ExternalLinkAltIcon, CheckCircleIcon, ArrowLeftIcon } from '@patternfly
 import { ErrorAlert } from '../components/ErrorAlert';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { usePackageDetails } from '../hooks/usePackages';
-import { getPackageFiles } from '../lib/api';
+import { getPackageFiles, installPackage, removePackage } from '../lib/api';
 
 export interface PackageDetailsViewProps {
     /** Package name to display */
@@ -69,6 +69,7 @@ export const PackageDetailsView: React.FC<PackageDetailsViewProps> = ({
 }) => {
     const [activeTab, setActiveTab] = useState<string | number>(0);
     const [operating, setOperating] = useState(false);
+    const [operationProgress, setOperationProgress] = useState<{ percentage: number; message: string } | null>(null);
     const [files, setFiles] = useState<string[] | null>(null);
     const [filesLoading, setFilesLoading] = useState(false);
     const [filesError, setFilesError] = useState<Error | null>(null);
@@ -108,28 +109,68 @@ export const PackageDetailsView: React.FC<PackageDetailsViewProps> = ({
     }, [activeTab, details?.installed, packageName, files, filesLoading]);
 
     const handleInstall = async () => {
-        if (!onInstall || !details) return;
+        if (!details) return;
 
         setOperating(true);
+        setOperationProgress({ percentage: 0, message: 'Starting installation...' });
         try {
-            await onInstall(details.name);
-            // Refetch to update installed status
-            refetch();
+            // Call API directly with progress callback
+            await installPackage(details.name, (progress) => {
+                setOperationProgress(progress);
+            });
+
+            // Refetch to update installed status (silently, without loading skeleton)
+            await refetch();
+
+            // Also call the optional parent callback for any side effects
+            if (onInstall) {
+                try {
+                    await onInstall(details.name);
+                } catch (e) {
+                    // Ignore errors from parent callback
+                    console.warn('Parent onInstall callback failed:', e);
+                }
+            }
+        } catch (error) {
+            // TODO: Show error alert to user
+            console.error('Install failed:', error);
+            throw error;
         } finally {
             setOperating(false);
+            setOperationProgress(null);
         }
     };
 
     const handleRemove = async () => {
-        if (!onRemove || !details) return;
+        if (!details) return;
 
         setOperating(true);
+        setOperationProgress({ percentage: 0, message: 'Starting removal...' });
         try {
-            await onRemove(details.name);
-            // Refetch to update installed status
-            refetch();
+            // Call API directly with progress callback
+            await removePackage(details.name, (progress) => {
+                setOperationProgress(progress);
+            });
+
+            // Refetch to update installed status (silently, without loading skeleton)
+            await refetch();
+
+            // Also call the optional parent callback for any side effects
+            if (onRemove) {
+                try {
+                    await onRemove(details.name);
+                } catch (e) {
+                    // Ignore errors from parent callback
+                    console.warn('Parent onRemove callback failed:', e);
+                }
+            }
+        } catch (error) {
+            // TODO: Show error alert to user
+            console.error('Remove failed:', error);
+            throw error;
         } finally {
             setOperating(false);
+            setOperationProgress(null);
         }
     };
 
@@ -206,27 +247,37 @@ export const PackageDetailsView: React.FC<PackageDetailsViewProps> = ({
 
                 <FlexItem>
                     {details.installed ? (
-                        onRemove && (
+                        <div>
                             <Button
                                 variant="danger"
                                 onClick={handleRemove}
                                 isLoading={operating}
                                 isDisabled={operating}
                             >
-                                Remove Package
+                                {operating ? 'Removing...' : 'Remove Package'}
                             </Button>
-                        )
+                            {operationProgress && (
+                                <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--pf-v5-global--Color--200)' }}>
+                                    {operationProgress.percentage}% - {operationProgress.message}
+                                </div>
+                            )}
+                        </div>
                     ) : (
-                        onInstall && (
+                        <div>
                             <Button
                                 variant="primary"
                                 onClick={handleInstall}
                                 isLoading={operating}
                                 isDisabled={operating}
                             >
-                                Install Package
+                                {operating ? 'Installing...' : 'Install Package'}
                             </Button>
-                        )
+                            {operationProgress && (
+                                <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--pf-v5-global--Color--200)' }}>
+                                    {operationProgress.percentage}% - {operationProgress.message}
+                                </div>
+                            )}
+                        </div>
                     )}
                 </FlexItem>
             </Flex>

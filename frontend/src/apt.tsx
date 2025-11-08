@@ -131,27 +131,19 @@ function App() {
     const handleNavigateToUpdates = () => navigateTo('updates');
     const handleBack = () => window.history.back();
 
-    // Install/Remove handlers (stubs for now - will show errors from api.ts)
+    // Install/Remove notification handlers
+    // These are called AFTER the operation completes in child components
+    // Used for side effects like invalidating caches, showing notifications, etc.
     const handleInstall = async (packageName: string) => {
-        try {
-            const { installPackage } = await import('./lib/api');
-            await installPackage(packageName);
-        } catch (error) {
-            console.error('Install error:', error);
-            // Error will be shown by the component
-            throw error;
-        }
+        // Child component already performed the install
+        // Just log for now - could add toast notifications here
+        console.log('Package installed:', packageName);
     };
 
     const handleRemove = async (packageName: string) => {
-        try {
-            const { removePackage } = await import('./lib/api');
-            await removePackage(packageName);
-        } catch (error) {
-            console.error('Remove error:', error);
-            // Error will be shown by the component
-            throw error;
-        }
+        // Child component already performed the remove
+        // Just log for now - could add toast notifications here
+        console.log('Package removed:', packageName);
     };
 
     // Determine active tab

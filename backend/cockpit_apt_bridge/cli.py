@@ -43,6 +43,9 @@ from cockpit_apt_bridge.commands import (
     dependencies,
     reverse_dependencies,
     files,
+    install,
+    remove,
+    update,
 )
 from cockpit_apt_bridge.utils.errors import APTBridgeError, format_error
 from cockpit_apt_bridge.utils.formatters import to_json
@@ -63,6 +66,9 @@ Commands:
   dependencies PACKAGE              Get direct dependencies of a package
   reverse-dependencies PACKAGE      Get packages that depend on a package
   files PACKAGE                     List files installed by a package (installed only)
+  install PACKAGE                   Install a package (with progress)
+  remove PACKAGE                    Remove a package (with progress)
+  update                            Update package lists (with progress)
 
 Examples:
   cockpit-apt-bridge search nginx
@@ -74,6 +80,9 @@ Examples:
   cockpit-apt-bridge dependencies nginx
   cockpit-apt-bridge reverse-dependencies libc6
   cockpit-apt-bridge files nginx
+  cockpit-apt-bridge install cowsay
+  cockpit-apt-bridge remove cowsay
+  cockpit-apt-bridge update
 """
     print(usage, file=sys.stderr)
 
@@ -157,6 +166,27 @@ def main() -> NoReturn:
             package_name = sys.argv[2]
             result = files.execute(package_name)
 
+        elif command == "install":
+            if len(sys.argv) < 3:
+                raise APTBridgeError(
+                    "Install command requires a package name argument",
+                    code="INVALID_ARGUMENTS"
+                )
+            package_name = sys.argv[2]
+            result = install.execute(package_name)
+
+        elif command == "remove":
+            if len(sys.argv) < 3:
+                raise APTBridgeError(
+                    "Remove command requires a package name argument",
+                    code="INVALID_ARGUMENTS"
+                )
+            package_name = sys.argv[2]
+            result = remove.execute(package_name)
+
+        elif command == "update":
+            result = update.execute()
+
         elif command in ("--help", "-h", "help"):
             print_usage()
             sys.exit(0)
@@ -167,8 +197,10 @@ def main() -> NoReturn:
                 code="UNKNOWN_COMMAND"
             )
 
-        # Output result as JSON to stdout
-        print(to_json(result))
+        # Output result as JSON to stdout (if not None)
+        # Commands that stream progress may print results themselves and return None
+        if result is not None:
+            print(to_json(result))
         sys.exit(0)
 
     except APTBridgeError as e:

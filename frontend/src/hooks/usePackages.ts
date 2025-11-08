@@ -119,22 +119,28 @@ export function usePackageDetails(
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<APTError | null>(null);
 
-    const fetchData = async () => {
+    const fetchData = async (forceRefresh: boolean = false, silent: boolean = false) => {
         if (!enabled || !packageName) {
             setData(null);
             return;
         }
 
-        setLoading(true);
+        // Only set loading state if not a silent refetch
+        if (!silent) {
+            setLoading(true);
+        }
         setError(null);
 
         try {
-            const result = await api.getPackageDetails(packageName);
+            // Use cache by default, but allow forcing fresh data
+            const result = await api.getPackageDetails(packageName, !forceRefresh);
             setData(result);
         } catch (err) {
             setError(err as APTError);
         } finally {
-            setLoading(false);
+            if (!silent) {
+                setLoading(false);
+            }
         }
     };
 
@@ -142,7 +148,8 @@ export function usePackageDetails(
         fetchData();
     }, [packageName, enabled]);
 
-    return { data, loading, error, refetch: fetchData };
+    // Return refetch that forces fresh data silently (without showing loading skeleton)
+    return { data, loading, error, refetch: () => fetchData(true, true) };
 }
 
 /**

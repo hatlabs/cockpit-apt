@@ -451,9 +451,122 @@ export async function waitForLock(
 }
 
 // ==================== Operation Functions ====================
-// Note: Install, remove, and update operations are not yet implemented
-// These require apt-get commands with Status-Fd parsing which will be
-// added in the backend first. For now, we provide placeholder signatures.
+
+/**
+ * Execute a command with progress streaming
+ *
+ * Backend outputs JSON lines:
+ * - Progress: {"type": "progress", "percentage": number, "message": string}
+ * - Final: {"success": bool, "message": string, ...}
+ *
+ * @param args Command arguments
+ * @param onProgress Optional progress callback
+ * @returns Final result object
+ * @throws APTError if command fails
+ */
+async function executeWithProgress(
+    args: string[],
+    onProgress?: (progress: { percentage: number; message: string }) => void
+): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+        let stdout = '';
+        let stderr = '';
+        let finalResult: unknown = null;
+
+        const process = cockpit.spawn(['cockpit-apt-bridge', ...args], {
+            err: 'message',
+            superuser: 'require', // Operations need sudo
+        });
+
+        process
+            .stream((data: string) => {
+                stdout += data;
+
+                // Process complete JSON lines
+                let lines = stdout.split('\n');
+                stdout = lines.pop() || ''; // Keep incomplete line in buffer
+
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+
+                    try {
+                        const obj = JSON.parse(line);
+
+                        // Check if it's a progress update
+                        if (obj.type === 'progress' && onProgress) {
+                            onProgress({
+                                percentage: obj.percentage,
+                                message: obj.message
+                            });
+                        } else if (obj.success !== undefined) {
+                            // This is the final result
+                            finalResult = obj;
+                        }
+                    } catch (e) {
+                        // Not JSON, skip
+                    }
+                }
+            })
+            .fail((error: unknown, data: string | null) => {
+                stderr = data || '';
+
+                // Try to parse stderr as JSON error
+                if (stderr) {
+                    try {
+                        const errorObj = JSON.parse(stderr);
+                        reject(translateError(errorObj));
+                        return;
+                    } catch {
+                        // Not JSON, use stderr as message
+                    }
+                }
+
+                reject(translateError(error));
+            })
+            .done(() => {
+                // If we got a final result from streaming, use it
+                if (finalResult) {
+                    resolve(finalResult);
+                    return;
+                }
+
+                // Process any remaining data in the buffer
+                if (stdout.trim()) {
+                    // Try to parse remaining lines
+                    const lines = stdout.split('\n');
+                    for (const line of lines) {
+                        if (!line.trim()) continue;
+
+                        try {
+                            const obj = JSON.parse(line);
+
+                            // Check if it's a progress update
+                            if (obj.type === 'progress' && onProgress) {
+                                onProgress({
+                                    percentage: obj.percentage,
+                                    message: obj.message
+                                });
+                            } else if (obj.success !== undefined) {
+                                // This is the final result
+                                finalResult = obj;
+                            }
+                        } catch (e) {
+                            // Not JSON, skip
+                        }
+                    }
+
+                    // If we found a final result, use it
+                    if (finalResult) {
+                        resolve(finalResult);
+                        return;
+                    }
+                }
+
+                // No result found
+                reject(translateError(new Error('Command completed but returned no result')));
+            });
+    });
+}
 
 /**
  * Install a package
@@ -461,13 +574,21 @@ export async function waitForLock(
  * @param packageName Name of the package to install
  * @param onProgress Optional progress callback
  * @throws APTError if installation fails
- * @throws Error Not yet implemented
  */
 export async function installPackage(
     packageName: string,
     onProgress?: (progress: { percentage: number; message: string }) => void
 ): Promise<void> {
-    throw new Error('installPackage not yet implemented - requires backend apt-get integration');
+    const result = await executeWithProgress(['install', packageName], onProgress) as { success: boolean };
+
+    if (!result.success) {
+        throw translateError(new Error('Installation failed'));
+    }
+
+    // Invalidate caches after successful install
+    invalidateCache('installed');
+    invalidateCache('upgradable');
+    invalidateCache(`details:${packageName}`);
 }
 
 /**
@@ -476,13 +597,20 @@ export async function installPackage(
  * @param packageName Name of the package to remove
  * @param onProgress Optional progress callback
  * @throws APTError if removal fails
- * @throws Error Not yet implemented
  */
 export async function removePackage(
     packageName: string,
     onProgress?: (progress: { percentage: number; message: string }) => void
 ): Promise<void> {
-    throw new Error('removePackage not yet implemented - requires backend apt-get integration');
+    const result = await executeWithProgress(['remove', packageName], onProgress) as { success: boolean };
+
+    if (!result.success) {
+        throw translateError(new Error('Removal failed'));
+    }
+
+    // Invalidate caches after successful removal
+    invalidateCache('installed');
+    invalidateCache(`details:${packageName}`);
 }
 
 /**
@@ -490,10 +618,16 @@ export async function removePackage(
  *
  * @param onProgress Optional progress callback
  * @throws APTError if update fails
- * @throws Error Not yet implemented
  */
 export async function updatePackageLists(
     onProgress?: (progress: { percentage: number; message: string }) => void
 ): Promise<void> {
-    throw new Error('updatePackageLists not yet implemented - requires backend apt-get integration');
+    const result = await executeWithProgress(['update'], onProgress) as { success: boolean };
+
+    if (!result.success) {
+        throw translateError(new Error('Update failed'));
+    }
+
+    // Clear all caches after successful update
+    clearCache();
 }
