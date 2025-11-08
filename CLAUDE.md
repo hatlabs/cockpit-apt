@@ -298,8 +298,8 @@ gh pr create \
   --title "feat(ui): Add package comparison view" \
   --body "Implements package comparison feature requested in #45"
 
-# 6. Wait 180 seconds for CI checks and Copilot review
-sleep 180
+# 6. Wait for CI checks and Copilot review
+# Poll status: gh pr checks
 
 # 7. Check status
 gh pr checks

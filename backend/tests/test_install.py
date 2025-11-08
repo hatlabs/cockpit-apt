@@ -134,7 +134,6 @@ class TestExecute:
         mock_status_file = Mock()
         mock_status_file.read.return_value = ""
         mock_status_file.close = Mock()
-        mock_status_file.close = Mock()
         mock_fdopen.return_value = mock_status_file
         mock_select.return_value = ([], [], [])
 
@@ -160,7 +159,6 @@ class TestExecute:
         mock_pipe.return_value = (3, 4)
         mock_status_file = Mock()
         mock_status_file.read.return_value = ""
-        mock_status_file.close = Mock()
         mock_status_file.close = Mock()
         mock_fdopen.return_value = mock_status_file
         mock_select.return_value = ([], [], [])

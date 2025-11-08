@@ -16,16 +16,14 @@ jobs:
 
       - name: Run backend tests
         run: |
-          set +e
-          output=$(docker compose -f docker/docker-compose.devtools.yml run --rm --user root devtools bash -c "uv sync --extra dev && uv run pytest" 2>&1)
-          exitcode=$?
-          echo "$output"
-          if echo "$output" | grep -q "passed" && ! echo "$output" | grep -q "failed"; then
+          docker compose -f docker/docker-compose.devtools.yml run --rm --user root devtools bash -c "uv sync --extra dev && uv run pytest 2>&1 | tee test-output.txt; exit \${PIPESTATUS[0]}"
+          TEST_EXIT_CODE=$?
+          if [ $TEST_EXIT_CODE -eq 0 ]; then
             echo "✅ All backend tests passed"
             exit 0
           else
             echo "❌ Backend tests failed"
-            exit $exitcode
+            exit $TEST_EXIT_CODE
           fi
 
       - name: Run backend linting

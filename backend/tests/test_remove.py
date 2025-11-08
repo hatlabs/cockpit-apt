@@ -30,7 +30,7 @@ class TestExecute:
         status_lines = [
             "pmstatus:nginx:25.0:Removing nginx\n",
             "pmstatus:nginx:50.0:Removing nginx files\n",
-           "pmstatus:nginx:75.0:Cleaning up\n",
+            "pmstatus:nginx:75.0:Cleaning up\n",
         ]
         mock_status_file = Mock()
         mock_status_file.read.side_effect = status_lines + [""]
