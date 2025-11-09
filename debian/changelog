@@ -1,0 +1,12 @@
+cockpit-apt (0.1.0-1) unstable; urgency=medium
+
+  * Initial release
+  * Full package manager functionality (search, install, remove, update)
+  * Browse packages by Debian section
+  * View package details, dependencies, and file lists
+  * Real-time progress tracking for operations
+  * Safety features (essential package protection, lock detection)
+  * Modern React + PatternFly 6 UI
+  * 285 tests (129 backend + 156 frontend)
+
+ -- Matti Airas <matti.airas@hatlabs.fi>  Sat, 09 Nov 2025 11:00:00 +0000

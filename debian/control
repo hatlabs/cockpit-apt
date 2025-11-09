@@ -1,0 +1,23 @@
+Source: cockpit-apt
+Section: admin
+Priority: optional
+Maintainer: Matti Airas <matti.airas@hatlabs.fi>
+Build-Depends: debhelper-compat (= 13), nodejs, npm, python3-all, python3-apt, python3-hatchling, dh-python
+Standards-Version: 4.6.2
+Homepage: https://github.com/hatlabs/cockpit-apt
+
+Package: cockpit-apt
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}, cockpit (>= 276), python3-apt
+Description: Modern APT package manager interface for Cockpit
+ A web-based package manager interface for Cockpit that provides:
+  - Browse packages by Debian section (games, web, development, etc.)
+  - Search and filter packages by name or description
+  - View detailed package information, dependencies, and file lists
+  - Install and remove packages with progress tracking
+  - View available package updates
+  - Modern React-based UI with PatternFly components
+ .
+ This package provides a modern, user-friendly interface for managing
+ APT packages through Cockpit's web interface, designed for Debian
+ and Ubuntu systems.
