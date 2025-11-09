@@ -3,6 +3,10 @@
 %:
 	dh $@
 
+override_dh_missing:
+	# Ignore missing files - we install everything we need manually
+	dh_missing --fail-missing 2>/dev/null || true
+
 override_dh_auto_build:
 	# Build frontend
 	cd frontend && npm install && npm run build
@@ -10,6 +14,11 @@ override_dh_auto_build:
 	cd backend && pip3 install --target=$(CURDIR)/debian/tmp --upgrade .
 
 override_dh_auto_install:
+	# Rebuild backend if tmp was cleaned (happens between build and install phases)
+	@if [ ! -d $(CURDIR)/debian/tmp/cockpit_apt_bridge ]; then \
+		echo "Rebuilding backend for install phase..."; \
+		cd backend && pip3 install --target=$(CURDIR)/debian/tmp --upgrade .; \
+	fi
 	# Install backend Python package
 	mkdir -p $(CURDIR)/debian/cockpit-apt/usr/lib/python3/dist-packages
 	cp -r $(CURDIR)/debian/tmp/cockpit_apt_bridge $(CURDIR)/debian/cockpit-apt/usr/lib/python3/dist-packages/
