@@ -277,7 +277,7 @@ export const SectionsView: React.FC<SectionsViewProps> = ({
                                         style={{ height: '100%' }}
                                         tabIndex={0}
                                         role="button"
-                                        aria-label={`View ${section.count} packages in ${getSectionDisplayName(section.name)} section`}
+                                        aria-label={`View ${section.count} packages in ${prefix ? `${getArchiveLabel(prefix)} ` : ''}${getSectionDisplayName(section.name)} section`}
                                     >
                                         <CardHeader>
                                             {getSectionIcon(section.name)}
