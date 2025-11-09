@@ -1,0 +1,24 @@
+FROM debian:trixie
+
+# Install Debian packaging tools and build dependencies
+RUN apt-get update && apt-get install -y \
+    debhelper \
+    dh-python \
+    build-essential \
+    fakeroot \
+    devscripts \
+    lintian \
+    python3-all \
+    python3-apt \
+    python3-setuptools \
+    python3-build \
+    python3-pip \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /workspace
+
+# Default command
+CMD ["/bin/bash"]
