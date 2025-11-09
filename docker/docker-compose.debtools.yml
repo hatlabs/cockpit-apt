@@ -4,7 +4,6 @@ services:
       context: .
       dockerfile: Dockerfile.debtools
     volumes:
-      - ../../:/workspace-parent
       - ../:/workspace
     working_dir: /workspace
     command: /bin/bash

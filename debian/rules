@@ -4,8 +4,8 @@
 	dh $@
 
 override_dh_missing:
-	# Ignore missing files - we install everything we need manually
-	dh_missing --fail-missing 2>/dev/null || true
+	# List missing files instead of failing - we install everything we need manually
+	dh_missing --list-missing
 
 override_dh_auto_build:
 	# Build frontend
