@@ -21,27 +21,27 @@
  *   />
  */
 
-import React, { useState, useEffect } from 'react';
 import {
-    PageSection,
-    Title,
-    Tabs,
-    Tab,
-    TabTitleText,
+    Badge,
+    Button,
     DescriptionList,
+    DescriptionListDescription,
     DescriptionListGroup,
     DescriptionListTerm,
-    DescriptionListDescription,
-    Button,
+    Divider,
     Flex,
     FlexItem,
-    Badge,
     Label,
-    Divider,
+    PageSection,
     Spinner,
+    Tab,
+    Tabs,
+    TabTitleText,
     TextInput,
+    Title,
 } from '@patternfly/react-core';
-import { ExternalLinkAltIcon, CheckCircleIcon, ArrowLeftIcon } from '@patternfly/react-icons';
+import { ArrowLeftIcon, CheckCircleIcon, ExternalLinkAltIcon } from '@patternfly/react-icons';
+import React, { useEffect, useState } from 'react';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { usePackageDetails } from '../hooks/usePackages';

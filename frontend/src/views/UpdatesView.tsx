@@ -7,25 +7,25 @@
  * - Upgrade all packages at once
  */
 
-import { useState, useEffect } from 'react';
 import {
-    PageSection,
-    Title,
+    Bullseye,
     Button,
     EmptyState,
     EmptyStateBody,
+    PageSection,
+    Spinner,
+    TextInput,
+    Title,
     Toolbar,
     ToolbarContent,
     ToolbarItem,
-    TextInput,
-    Spinner,
-    Bullseye,
 } from '@patternfly/react-core';
-import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import { CheckCircleIcon, SearchIcon } from '@patternfly/react-icons';
-import { listUpgradablePackages, installPackage } from '../lib/api';
-import { UpgradablePackage } from '../lib/types';
+import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table';
+import { useEffect, useState } from 'react';
 import { ErrorAlert } from '../components/ErrorAlert';
+import { installPackage, listUpgradablePackages } from '../lib/api';
+import { UpgradablePackage } from '../lib/types';
 
 interface UpdatesViewProps {
     onNavigateToPackage: (name: string) => void;

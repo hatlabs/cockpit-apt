@@ -33,9 +33,9 @@
  *   const details = await getPackageDetails('nginx');
  */
 
-import type { Package, PackageDetails, Section, Dependency, UpgradablePackage } from './types';
 import { cache } from './cache-manager';
 import { translateError } from './error-handler';
+import type { Dependency, Package, PackageDetails, Section, UpgradablePackage } from './types';
 
 /**
  * Execute cockpit-apt-bridge command and parse JSON response

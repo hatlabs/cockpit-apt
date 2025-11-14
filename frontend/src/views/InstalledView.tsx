@@ -7,25 +7,25 @@
  * - Filter/search within installed packages
  */
 
-import { useState, useEffect } from 'react';
 import {
+    Bullseye,
+    Button,
+    EmptyState,
+    EmptyStateBody,
     PageSection,
+    Spinner,
+    TextInput,
     Title,
     Toolbar,
     ToolbarContent,
     ToolbarItem,
-    TextInput,
-    Button,
-    EmptyState,
-    EmptyStateBody,
-    Spinner,
-    Bullseye,
 } from '@patternfly/react-core';
-import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import { CubesIcon, SearchIcon } from '@patternfly/react-icons';
+import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table';
+import { useEffect, useState } from 'react';
+import { ErrorAlert } from '../components/ErrorAlert';
 import { listInstalledPackages } from '../lib/api';
 import { Package } from '../lib/types';
-import { ErrorAlert } from '../components/ErrorAlert';
 
 interface InstalledViewProps {
     onNavigateToPackage: (name: string) => void;
