@@ -13,17 +13,17 @@
  * - /apt/updates - Available updates (future)
  */
 
-import React, { useState, useEffect } from "react";
+import { Page, PageSection, Tab, Tabs, TabTitleText, Title } from "@patternfly/react-core";
+import { ArrowUpIcon, CubesIcon, LayerGroupIcon, SearchIcon } from "@patternfly/react-icons";
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Tabs, Tab, TabTitleText, Title, Page, PageSection } from "@patternfly/react-core";
-import { SearchIcon, CubesIcon, LayerGroupIcon, ArrowUpIcon } from "@patternfly/react-icons";
 import { AppProvider } from "./context/AppContext";
-import { SearchView } from "./views/SearchView";
-import { SectionsView } from "./views/SectionsView";
-import { PackageDetailsView } from "./views/PackageDetailsView";
 import { InstalledView } from "./views/InstalledView";
-import { UpdatesView } from "./views/UpdatesView";
+import { PackageDetailsView } from "./views/PackageDetailsView";
+import { SearchView } from "./views/SearchView";
 import { SectionPackageListView } from "./views/SectionPackageListView";
+import { SectionsView } from "./views/SectionsView";
+import { UpdatesView } from "./views/UpdatesView";
 // Import both PatternFly CSS files
 // patternfly-base.css contains design tokens (--pf-t--global--* variables)
 // patternfly.css contains component styles that reference those tokens

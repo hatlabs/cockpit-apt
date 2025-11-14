@@ -23,10 +23,10 @@ import {
 import { CheckCircleIcon, SearchIcon } from "@patternfly/react-icons";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
 import { useEffect, useState } from "react";
-import { useApp } from "../context/AppContext";
-import { ErrorAlert } from "../components/ErrorAlert";
-import { installPackage } from "../lib/api";
 import type { Package } from "../api/types";
+import { ErrorAlert } from "../components/ErrorAlert";
+import { useApp } from "../context/AppContext";
+import { installPackage } from "../lib/api";
 
 interface UpdatesViewProps {
   onNavigateToPackage: (name: string) => void;
