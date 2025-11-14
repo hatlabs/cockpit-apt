@@ -45,69 +45,69 @@
  * Represents errors from the Python backend with structured error information.
  */
 export class APTError extends Error {
-    /** Machine-readable error code */
-    code: string;
+  /** Machine-readable error code */
+  code: string;
 
-    /** Optional additional details (e.g., package name, stack trace) */
-    details?: string;
+  /** Optional additional details (e.g., package name, stack trace) */
+  details?: string;
 
-    /**
-     * Create a new APT error
-     *
-     * @param message Human-readable error message
-     * @param code Machine-readable error code
-     * @param details Optional additional details
-     */
-    constructor(message: string, code: string = 'UNKNOWN_ERROR', details?: string) {
-        super(message);
-        this.name = 'APTError';
-        this.code = code;
-        this.details = details;
+  /**
+   * Create a new APT error
+   *
+   * @param message Human-readable error message
+   * @param code Machine-readable error code
+   * @param details Optional additional details
+   */
+  constructor(message: string, code: string = "UNKNOWN_ERROR", details?: string) {
+    super(message);
+    this.name = "APTError";
+    this.code = code;
+    this.details = details;
 
-        // Maintains proper stack trace for where our error was thrown (V8 only)
-        if (typeof (Error as any).captureStackTrace === 'function') {
-            (Error as any).captureStackTrace(this, APTError);
-        }
+    // Maintains proper stack trace for where our error was thrown (V8 only)
+    if (typeof (Error as any).captureStackTrace === "function") {
+      (Error as any).captureStackTrace(this, APTError);
+    }
+  }
+
+  /**
+   * Convert error to JSON format
+   *
+   * @returns JSON representation of error
+   */
+  toJSON(): { error: string; code: string; details?: string } {
+    const json: { error: string; code: string; details?: string } = {
+      error: this.message,
+      code: this.code,
+    };
+
+    if (this.details) {
+      json.details = this.details;
     }
 
-    /**
-     * Convert error to JSON format
-     *
-     * @returns JSON representation of error
-     */
-    toJSON(): { error: string; code: string; details?: string } {
-        const json: { error: string; code: string; details?: string } = {
-            error: this.message,
-            code: this.code,
-        };
+    return json;
+  }
 
-        if (this.details) {
-            json.details = this.details;
-        }
-
-        return json;
+  /**
+   * Convert error to string
+   *
+   * @returns String representation
+   */
+  override toString(): string {
+    if (this.details) {
+      return `${this.name} [${this.code}]: ${this.message} (${this.details})`;
     }
-
-    /**
-     * Convert error to string
-     *
-     * @returns String representation
-     */
-    override toString(): string {
-        if (this.details) {
-            return `${this.name} [${this.code}]: ${this.message} (${this.details})`;
-        }
-        return `${this.name} [${this.code}]: ${this.message}`;
-    }
+    return `${this.name} [${this.code}]: ${this.message}`;
+  }
 }
 
 /**
  * Backend error JSON structure
  */
 interface BackendError {
-    error: string;
-    code: string;
-    details?: string;
+  error: string;
+  code: string;
+  details?: string;
 }
 
 /**
@@ -117,16 +117,16 @@ interface BackendError {
  * @returns True if value matches backend error structure
  */
 function isBackendError(value: unknown): value is BackendError {
-    if (typeof value !== 'object' || value === null) {
-        return false;
-    }
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
 
-    const obj = value as Record<string, unknown>;
-    return (
-        typeof obj.error === 'string' &&
-        typeof obj.code === 'string' &&
-        (obj.details === undefined || typeof obj.details === 'string')
-    );
+  const obj = value as Record<string, unknown>;
+  return (
+    typeof obj.error === "string" &&
+    typeof obj.code === "string" &&
+    (obj.details === undefined || typeof obj.details === "string")
+  );
 }
 
 /**
@@ -142,98 +142,94 @@ function isBackendError(value: unknown): value is BackendError {
  * @returns APTError instance
  */
 export function translateError(error: unknown): APTError {
-    // Already an APTError - pass through
-    if (error instanceof APTError) {
-        return error;
+  // Already an APTError - pass through
+  if (error instanceof APTError) {
+    return error;
+  }
+
+  // Standard Error object
+  if (error instanceof Error) {
+    // Try to parse message as JSON (backend errors are JSON in stderr)
+    try {
+      const parsed = JSON.parse(error.message);
+      if (isBackendError(parsed)) {
+        return new APTError(parsed.error, parsed.code, parsed.details);
+      }
+    } catch {
+      // Not JSON, use error message as-is
     }
 
-    // Standard Error object
-    if (error instanceof Error) {
-        // Try to parse message as JSON (backend errors are JSON in stderr)
-        try {
-            const parsed = JSON.parse(error.message);
-            if (isBackendError(parsed)) {
-                return new APTError(parsed.error, parsed.code, parsed.details);
-            }
-        } catch {
-            // Not JSON, use error message as-is
-        }
+    // Check for common error patterns
+    const message = error.message.toLowerCase();
 
-        // Check for common error patterns
-        const message = error.message.toLowerCase();
-
-        if (message.includes('not found') || message.includes('no such package')) {
-            return new APTError(error.message, 'PACKAGE_NOT_FOUND', error.message);
-        }
-
-        if (message.includes('permission denied') || message.includes('not authorized')) {
-            return new APTError(error.message, 'PERMISSION_DENIED', error.message);
-        }
-
-        if (message.includes('cache')) {
-            return new APTError(error.message, 'CACHE_ERROR', error.message);
-        }
-
-        if (message.includes('locked') || message.includes('unable to lock')) {
-            return new APTError(error.message, 'LOCKED', error.message);
-        }
-
-        // Generic error with original message
-        return new APTError(error.message, 'COMMAND_FAILED', error.message);
+    if (message.includes("not found") || message.includes("no such package")) {
+      return new APTError(error.message, "PACKAGE_NOT_FOUND", error.message);
     }
 
-    // Cockpit spawn error object (has exit status/signal)
-    if (typeof error === 'object' && error !== null) {
-        const obj = error as Record<string, unknown>;
-
-        // Check for exit status
-        if ('exit_status' in obj && typeof obj.exit_status === 'number') {
-            const exitStatus = obj.exit_status;
-            const problem = obj.problem as string | undefined;
-
-            if (exitStatus !== 0) {
-                const message = problem || `Command failed with exit code ${exitStatus}`;
-                return new APTError(message, 'COMMAND_FAILED', `Exit code: ${exitStatus}`);
-            }
-        }
-
-        // Check for signal (process was killed)
-        if ('exit_signal' in obj && typeof obj.exit_signal === 'string') {
-            const signal = obj.exit_signal;
-            return new APTError(
-                `Command terminated by signal ${signal}`,
-                'COMMAND_FAILED',
-                `Signal: ${signal}`
-            );
-        }
-
-        // Check if object has error/code structure
-        if (isBackendError(obj)) {
-            return new APTError(obj.error, obj.code, obj.details);
-        }
+    if (message.includes("permission denied") || message.includes("not authorized")) {
+      return new APTError(error.message, "PERMISSION_DENIED", error.message);
     }
 
-    // String error
-    if (typeof error === 'string') {
-        // Try to parse as JSON
-        try {
-            const parsed = JSON.parse(error);
-            if (isBackendError(parsed)) {
-                return new APTError(parsed.error, parsed.code, parsed.details);
-            }
-        } catch {
-            // Not JSON, use string as message
-        }
-
-        return new APTError(error, 'UNKNOWN_ERROR', error);
+    if (message.includes("cache")) {
+      return new APTError(error.message, "CACHE_ERROR", error.message);
     }
 
-    // Unknown error type
-    return new APTError(
-        'An unexpected error occurred',
-        'UNKNOWN_ERROR',
-        String(error)
-    );
+    if (message.includes("locked") || message.includes("unable to lock")) {
+      return new APTError(error.message, "LOCKED", error.message);
+    }
+
+    // Generic error with original message
+    return new APTError(error.message, "COMMAND_FAILED", error.message);
+  }
+
+  // Cockpit spawn error object (has exit status/signal)
+  if (typeof error === "object" && error !== null) {
+    const obj = error as Record<string, unknown>;
+
+    // Check for exit status
+    if ("exit_status" in obj && typeof obj.exit_status === "number") {
+      const exitStatus = obj.exit_status;
+      const problem = obj.problem as string | undefined;
+
+      if (exitStatus !== 0) {
+        const message = problem || `Command failed with exit code ${exitStatus}`;
+        return new APTError(message, "COMMAND_FAILED", `Exit code: ${exitStatus}`);
+      }
+    }
+
+    // Check for signal (process was killed)
+    if ("exit_signal" in obj && typeof obj.exit_signal === "string") {
+      const signal = obj.exit_signal;
+      return new APTError(
+        `Command terminated by signal ${signal}`,
+        "COMMAND_FAILED",
+        `Signal: ${signal}`
+      );
+    }
+
+    // Check if object has error/code structure
+    if (isBackendError(obj)) {
+      return new APTError(obj.error, obj.code, obj.details);
+    }
+  }
+
+  // String error
+  if (typeof error === "string") {
+    // Try to parse as JSON
+    try {
+      const parsed = JSON.parse(error);
+      if (isBackendError(parsed)) {
+        return new APTError(parsed.error, parsed.code, parsed.details);
+      }
+    } catch {
+      // Not JSON, use string as message
+    }
+
+    return new APTError(error, "UNKNOWN_ERROR", error);
+  }
+
+  // Unknown error type
+  return new APTError("An unexpected error occurred", "UNKNOWN_ERROR", String(error));
 }
 
 /**
@@ -244,12 +240,12 @@ export function translateError(error: unknown): APTError {
  * @returns True if error matches code
  */
 export function isErrorCode(error: unknown, code: string): boolean {
-    if (error instanceof APTError) {
-        return error.code === code;
-    }
+  if (error instanceof APTError) {
+    return error.code === code;
+  }
 
-    const aptError = translateError(error);
-    return aptError.code === code;
+  const aptError = translateError(error);
+  return aptError.code === code;
 }
 
 /**
@@ -261,30 +257,30 @@ export function isErrorCode(error: unknown, code: string): boolean {
  * @returns User-friendly error message
  */
 export function getUserMessage(error: unknown): string {
-    const aptError = translateError(error);
+  const aptError = translateError(error);
 
-    switch (aptError.code) {
-        case 'PACKAGE_NOT_FOUND':
-            return aptError.details
-                ? `Package "${aptError.details}" was not found`
-                : 'Package was not found';
+  switch (aptError.code) {
+    case "PACKAGE_NOT_FOUND":
+      return aptError.details
+        ? `Package "${aptError.details}" was not found`
+        : "Package was not found";
 
-        case 'PERMISSION_DENIED':
-            return 'You do not have permission to perform this operation. Try using administrator mode.';
+    case "PERMISSION_DENIED":
+      return "You do not have permission to perform this operation. Try using administrator mode.";
 
-        case 'LOCKED':
-            return 'Package manager is locked by another process. Please wait and try again.';
+    case "LOCKED":
+      return "Package manager is locked by another process. Please wait and try again.";
 
-        case 'CACHE_ERROR':
-            return 'Failed to access package database. Try refreshing the package list.';
+    case "CACHE_ERROR":
+      return "Failed to access package database. Try refreshing the package list.";
 
-        case 'INVALID_INPUT':
-            return aptError.message;
+    case "INVALID_INPUT":
+      return aptError.message;
 
-        case 'COMMAND_FAILED':
-            return aptError.message || 'Command failed. Please try again.';
+    case "COMMAND_FAILED":
+      return aptError.message || "Command failed. Please try again.";
 
-        default:
-            return aptError.message || 'An unexpected error occurred';
-    }
+    default:
+      return aptError.message || "An unexpected error occurred";
+  }
 }

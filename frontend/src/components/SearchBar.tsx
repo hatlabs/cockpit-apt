@@ -21,146 +21,142 @@
  *   />
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
-    TextInput,
-    InputGroup,
-    Button,
-    Spinner,
-    FormHelperText,
-    HelperText,
-    HelperTextItem,
-} from '@patternfly/react-core';
-import { SearchIcon, TimesIcon } from '@patternfly/react-icons';
+  TextInput,
+  InputGroup,
+  Button,
+  Spinner,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
+} from "@patternfly/react-core";
+import { SearchIcon, TimesIcon } from "@patternfly/react-icons";
 
 export interface SearchBarProps {
-    /** Current search value */
-    value: string;
+  /** Current search value */
+  value: string;
 
-    /** Callback when value changes */
-    onChange: (value: string) => void;
+  /** Callback when value changes */
+  onChange: (value: string) => void;
 
-    /** Callback when search should be executed (after debounce) */
-    onSearch?: (query: string) => void;
+  /** Callback when search should be executed (after debounce) */
+  onSearch?: (query: string) => void;
 
-    /** Whether search is currently loading */
-    loading?: boolean;
+  /** Whether search is currently loading */
+  loading?: boolean;
 
-    /** Placeholder text */
-    placeholder?: string;
+  /** Placeholder text */
+  placeholder?: string;
 
-    /** Debounce delay in milliseconds (default: 300) */
-    debounceMs?: number;
+  /** Debounce delay in milliseconds (default: 300) */
+  debounceMs?: number;
 
-    /** Minimum query length (default: 2) */
-    minLength?: number;
+  /** Minimum query length (default: 2) */
+  minLength?: number;
 
-    /** Additional CSS class name */
-    className?: string;
+  /** Additional CSS class name */
+  className?: string;
 
-    /** Optional style object */
-    style?: React.CSSProperties;
+  /** Optional style object */
+  style?: React.CSSProperties;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
-    value,
-    onChange,
-    onSearch,
-    loading = false,
-    placeholder = 'Search packages...',
-    debounceMs = 300,
-    minLength = 2,
-    className,
+  value,
+  onChange,
+  onSearch,
+  loading = false,
+  placeholder = "Search packages...",
+  debounceMs = 300,
+  minLength = 2,
+  className,
 }) => {
-    const [debouncedValue, setDebouncedValue] = useState(value);
+  const [debouncedValue, setDebouncedValue] = useState(value);
 
-    // Debounce the search value
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedValue(value);
-        }, debounceMs);
+  // Debounce the search value
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value);
+    }, debounceMs);
 
-        return () => clearTimeout(timer);
-    }, [value, debounceMs]);
+    return () => clearTimeout(timer);
+  }, [value, debounceMs]);
 
-    // Trigger search when debounced value changes
-    useEffect(() => {
-        if (debouncedValue.length >= minLength && onSearch) {
-            onSearch(debouncedValue);
-        }
-    }, [debouncedValue, minLength, onSearch]);
+  // Trigger search when debounced value changes
+  useEffect(() => {
+    if (debouncedValue.length >= minLength && onSearch) {
+      onSearch(debouncedValue);
+    }
+  }, [debouncedValue, minLength, onSearch]);
 
-    const handleChange = useCallback(
-        (_event: React.FormEvent<HTMLInputElement>, value: string) => {
-            onChange(value);
-        },
-        [onChange]
-    );
+  const handleChange = useCallback(
+    (_event: React.FormEvent<HTMLInputElement>, value: string) => {
+      onChange(value);
+    },
+    [onChange]
+  );
 
-    const handleClear = useCallback(() => {
-        onChange('');
-        if (onSearch) {
-            onSearch('');
-        }
-    }, [onChange, onSearch]);
+  const handleClear = useCallback(() => {
+    onChange("");
+    if (onSearch) {
+      onSearch("");
+    }
+  }, [onChange, onSearch]);
 
-    const handleKeyDown = useCallback(
-        (event: React.KeyboardEvent) => {
-            if (event.key === 'Escape') {
-                handleClear();
-            } else if (event.key === 'Enter' && value.length >= minLength && onSearch) {
-                // Force immediate search on Enter
-                onSearch(value);
-            }
-        },
-        [handleClear, value, minLength, onSearch]
-    );
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        handleClear();
+      } else if (event.key === "Enter" && value.length >= minLength && onSearch) {
+        // Force immediate search on Enter
+        onSearch(value);
+      }
+    },
+    [handleClear, value, minLength, onSearch]
+  );
 
-    const showMinLengthHint = value.length > 0 && value.length < minLength;
-    const showClearButton = value.length > 0 && !loading;
+  const showMinLengthHint = value.length > 0 && value.length < minLength;
+  const showClearButton = value.length > 0 && !loading;
 
-    return (
-        <div className={className}>
-            <InputGroup>
-                <TextInput
-                    type="search"
-                    value={value}
-                    onChange={handleChange}
-                    onKeyDown={handleKeyDown}
-                    placeholder={placeholder}
-                    aria-label="Search packages"
-                    validated={showMinLengthHint ? 'warning' : 'default'}
-                />
-                {loading && (
-                    <Button variant="plain" isDisabled aria-label="Searching">
-                        <Spinner size="md" />
-                    </Button>
-                )}
-                {showClearButton && (
-                    <Button
-                        variant="plain"
-                        onClick={handleClear}
-                        aria-label="Clear search"
-                    >
-                        <TimesIcon />
-                    </Button>
-                )}
-                {!loading && !showClearButton && (
-                    <Button variant="plain" isDisabled aria-label="Search">
-                        <SearchIcon />
-                    </Button>
-                )}
-            </InputGroup>
+  return (
+    <div className={className}>
+      <InputGroup>
+        <TextInput
+          type="search"
+          value={value}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          aria-label="Search packages"
+          validated={showMinLengthHint ? "warning" : "default"}
+        />
+        {loading && (
+          <Button variant="plain" isDisabled aria-label="Searching">
+            <Spinner size="md" />
+          </Button>
+        )}
+        {showClearButton && (
+          <Button variant="plain" onClick={handleClear} aria-label="Clear search">
+            <TimesIcon />
+          </Button>
+        )}
+        {!loading && !showClearButton && (
+          <Button variant="plain" isDisabled aria-label="Search">
+            <SearchIcon />
+          </Button>
+        )}
+      </InputGroup>
 
-            {showMinLengthHint && (
-                <FormHelperText>
-                    <HelperText>
-                        <HelperTextItem variant="warning">
-                            Type at least {minLength} characters to search
-                        </HelperTextItem>
-                    </HelperText>
-                </FormHelperText>
-            )}
-        </div>
-    );
+      {showMinLengthHint && (
+        <FormHelperText>
+          <HelperText>
+            <HelperTextItem variant="warning">
+              Type at least {minLength} characters to search
+            </HelperTextItem>
+          </HelperText>
+        </FormHelperText>
+      )}
+    </div>
+  );
 };

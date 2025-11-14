@@ -4,8 +4,8 @@
  * This file runs before all tests to set up the testing environment.
  */
 
-import { afterEach } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import { afterEach } from "vitest";
+import { cleanup } from "@testing-library/react";
 
 // Cleanup after each test
 afterEach(() => {
@@ -20,7 +20,7 @@ afterEach(() => {
     fail: () => ({}),
   }),
   file: () => ({
-    read: () => Promise.resolve(''),
+    read: () => Promise.resolve(""),
     replace: () => Promise.resolve(),
     watch: () => {},
   }),
