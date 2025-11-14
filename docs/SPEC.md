@@ -327,4 +327,3 @@ All Packages
 - [ARCHITECTURE.md](ARCHITECTURE.md) - Detailed system architecture
 - [ADR-001-container-store.md](ADR-001-container-store.md) - Architecture decision record
 - [CONTAINER_STORE_DESIGN.md](CONTAINER_STORE_DESIGN.md) - Original design document (historical reference)
-- [../../PROJECT_PLANNING_GUIDE.md](../../PROJECT_PLANNING_GUIDE.md) - Development workflow

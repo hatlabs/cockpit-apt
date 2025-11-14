@@ -213,12 +213,14 @@ from pathlib import Path
 from typing import List, Dict, Any
 from dataclasses import dataclass
 
+from dataclasses import dataclass, field
+
 @dataclass
 class StoreFilter:
-    include_origins: List[str] = None
-    include_sections: List[str] = None
-    include_tags: List[str] = None
-    include_packages: List[str] = None
+    include_origins: List[str] = field(default_factory=list)
+    include_sections: List[str] = field(default_factory=list)
+    include_tags: List[str] = field(default_factory=list)
+    include_packages: List[str] = field(default_factory=list)
 
 @dataclass
 class CustomSection:
@@ -235,7 +237,7 @@ class StoreConfig:
     icon: str
     banner: str
     filters: StoreFilter
-    custom_sections: List[CustomSection]
+    section_metadata: Dict[str, CustomSection] = field(default_factory=dict)
 
 def load_stores() -> List[StoreConfig]:
     """Load all store configurations from /etc/container-apps/stores/"""
@@ -265,10 +267,13 @@ def parse_store_config(data: Dict[str, Any]) -> StoreConfig:
         include_packages=data.get('filters', {}).get('include_packages', [])
     )
 
-    custom_sections = [
-        CustomSection(**section)
-        for section in data.get('custom_sections', [])
-    ]
+    section_metadata = {
+        section_id: CustomSection(
+            id=section_id,
+            **metadata
+        )
+        for section_id, metadata in data.get('section_metadata', {}).items()
+    }
 
     return StoreConfig(
         id=data['id'],
@@ -277,7 +282,7 @@ def parse_store_config(data: Dict[str, Any]) -> StoreConfig:
         icon=data['icon'],
         banner=data['banner'],
         filters=filters,
-        custom_sections=custom_sections
+        section_metadata=section_metadata
     )
 ```
 
@@ -540,8 +545,8 @@ export function usePackages() {
   // Load stores and repositories on mount
   useEffect(() => {
     Promise.all([
-      cockpit.spawn(['python3', '-m', 'cockpit_apt.stores', 'list']),
-      cockpit.spawn(['python3', '-m', 'cockpit_apt.repositories', 'list'])
+      cockpit.spawn(['python3', '-m', 'cockpit_apt_bridge.stores', 'list']),
+      cockpit.spawn(['python3', '-m', 'cockpit_apt_bridge.repositories', 'list'])
     ]).then(([storesJson, reposJson]) => {
       setStores(JSON.parse(storesJson));
       setRepositories(JSON.parse(reposJson));
@@ -568,13 +573,12 @@ export function usePackages() {
 
 **Store Config Example** (`marine.yaml`):
 ```yaml
-custom_sections:
-  - id: ais
+section_metadata:
+  ais:
     label: AIS
     description: Automatic Identification System tools
     icon: ship
-
-  - id: radar
+  radar:
     label: Radar
     description: Marine radar integration
     icon: radar
@@ -632,6 +636,10 @@ def test_load_stores():
 def test_parse_store_filter():
     data = {
         'id': 'test',
+        'name': 'Test Store',
+        'description': 'Test description',
+        'icon': '/path/to/icon.svg',
+        'banner': '/path/to/banner.png',
         'filters': {
             'include_tags': ['field::marine']
         }
@@ -672,8 +680,12 @@ describe('Store Toggle', () => {
     expect(screen.getByText('signalk-server-container')).toBeInTheDocument();
   });
 });
+```
 
-# E2E test example
+### E2E Test Example
+
+```typescript
+// E2E test example placeholder
 
 ```typescript
 test('complete filter flow', async () => {

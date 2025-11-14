@@ -931,4 +931,3 @@ Display in UI components
 - [ADR-001-container-store.md](ADR-001-container-store.md) - Architecture decision record
 - [CONTAINER_STORE_DESIGN.md](CONTAINER_STORE_DESIGN.md) - Original design document (historical)
 - [CLAUDE.md](../CLAUDE.md) - Development workflow guide
-- [../../PROJECT_PLANNING_GUIDE.md](../../PROJECT_PLANNING_GUIDE.md) - Project planning process
