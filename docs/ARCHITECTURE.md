@@ -1,7 +1,7 @@
 # System Architecture: Container Store Filtering
 
-**Status**: Draft  
-**Date**: 2025-11-14  
+**Status**: Draft
+**Date**: 2025-11-14
 **Component**: cockpit-apt
 
 ## Overview
@@ -398,7 +398,7 @@ All Packages (from APT cache)
        ↓
 [Store Filter Applied - if store selected]
    - Match ANY of: origin in include_origins
-   - Match ANY of: section in include_sections  
+   - Match ANY of: section in include_sections
    - Match ANY of: tag in include_tags
    - Match ANY of: name in include_packages
    - ALL specified filter types must match (AND logic between types)

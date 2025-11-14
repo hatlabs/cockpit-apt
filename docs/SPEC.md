@@ -1,7 +1,7 @@
 # Technical Specification: Container Store Filtering
 
-**Status**: Draft  
-**Date**: 2025-11-14  
+**Status**: Draft
+**Date**: 2025-11-14
 **Component**: cockpit-apt
 
 ## Project Overview
