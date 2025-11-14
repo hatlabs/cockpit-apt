@@ -135,89 +135,92 @@ export const SearchView: React.FC<SearchViewProps> = ({
           </EmptyState>
         )}
 
-        {!state.packagesLoading && !state.packagesError && state.packages.length > 0 && (
-          <div style={{ overflowX: "auto" }}>
-            <table className="pf-v5-c-table pf-m-grid-md" role="grid" style={{ width: "100%" }}>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Summary</th>
-                  <th>Version</th>
-                  <th>Section</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {state.packages.map((pkg) => (
-                  <tr
-                    key={pkg.name}
-                    onClick={() => handleRowClick(pkg)}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <td data-label="Name">
-                      <strong>{pkg.name}</strong>
-                    </td>
-                    <td data-label="Summary">
-                      <div
-                        style={{
-                          maxWidth: "400px",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {pkg.summary}
-                      </div>
-                    </td>
-                    <td data-label="Version">{pkg.version}</td>
-                    <td data-label="Section">{pkg.section}</td>
-                    <td data-label="Status">
-                      {pkg.installed ? (
-                        <span style={{ color: "var(--pf-v5-global--success-color--100)" }}>
-                          Installed
-                        </span>
-                      ) : (
-                        <span style={{ color: "var(--pf-v5-global--Color--200)" }}>
-                          Not installed
-                        </span>
-                      )}
-                    </td>
-                    <td data-label="Actions" onClick={(e) => e.stopPropagation()}>
-                      {pkg.installed
-                        ? onRemove && (
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              onClick={() => handleRemove(pkg.name)}
-                              isLoading={operatingPackage === pkg.name}
-                              isDisabled={operatingPackage === pkg.name}
-                            >
-                              Remove
-                            </Button>
-                          )
-                        : onInstall && (
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={() => handleInstall(pkg.name)}
-                              isLoading={operatingPackage === pkg.name}
-                              isDisabled={operatingPackage === pkg.name}
-                            >
-                              Install
-                            </Button>
-                          )}
-                    </td>
+        {!state.packagesLoading &&
+          !state.packagesError &&
+          state.searchQuery.length >= 2 &&
+          state.packages.length > 0 && (
+            <div style={{ overflowX: "auto" }}>
+              <table className="pf-v5-c-table pf-m-grid-md" role="grid" style={{ width: "100%" }}>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Summary</th>
+                    <th>Version</th>
+                    <th>Section</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            <div style={{ marginTop: "1rem", color: "var(--pf-v5-global--Color--200)" }}>
-              Showing {state.packages.length} result{state.packages.length !== 1 ? "s" : ""}
-              {state.limitedResults && " (limited)"}
+                </thead>
+                <tbody>
+                  {state.packages.map((pkg) => (
+                    <tr
+                      key={pkg.name}
+                      onClick={() => handleRowClick(pkg)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <td data-label="Name">
+                        <strong>{pkg.name}</strong>
+                      </td>
+                      <td data-label="Summary">
+                        <div
+                          style={{
+                            maxWidth: "400px",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {pkg.summary}
+                        </div>
+                      </td>
+                      <td data-label="Version">{pkg.version}</td>
+                      <td data-label="Section">{pkg.section}</td>
+                      <td data-label="Status">
+                        {pkg.installed ? (
+                          <span style={{ color: "var(--pf-v5-global--success-color--100)" }}>
+                            Installed
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--pf-v5-global--Color--200)" }}>
+                            Not installed
+                          </span>
+                        )}
+                      </td>
+                      <td data-label="Actions" onClick={(e) => e.stopPropagation()}>
+                        {pkg.installed
+                          ? onRemove && (
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => handleRemove(pkg.name)}
+                                isLoading={operatingPackage === pkg.name}
+                                isDisabled={operatingPackage === pkg.name}
+                              >
+                                Remove
+                              </Button>
+                            )
+                          : onInstall && (
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => handleInstall(pkg.name)}
+                                isLoading={operatingPackage === pkg.name}
+                                isDisabled={operatingPackage === pkg.name}
+                              >
+                                Install
+                              </Button>
+                            )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{ marginTop: "1rem", color: "var(--pf-v5-global--Color--200)" }}>
+                Showing {state.packages.length} result{state.packages.length !== 1 ? "s" : ""}
+                {state.limitedResults && " (limited)"}
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </CardBody>
     </Card>
   );
