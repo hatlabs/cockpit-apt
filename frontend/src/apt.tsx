@@ -17,6 +17,7 @@ import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { Tabs, Tab, TabTitleText, Title, Page, PageSection } from "@patternfly/react-core";
 import { SearchIcon, CubesIcon, LayerGroupIcon, ArrowUpIcon } from "@patternfly/react-icons";
+import { AppProvider } from "./context/AppContext";
 import { SearchView } from "./views/SearchView";
 import { SectionsView } from "./views/SectionsView";
 import { PackageDetailsView } from "./views/PackageDetailsView";
@@ -284,5 +285,9 @@ function App() {
 const container = document.getElementById("app");
 if (container) {
   const root = createRoot(container);
-  root.render(<App />);
+  root.render(
+    <AppProvider>
+      <App />
+    </AppProvider>
+  );
 }
