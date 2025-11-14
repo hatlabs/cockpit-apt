@@ -112,9 +112,9 @@ function App() {
     handleLocationChange();
 
     // Listen for changes
-    const cleanup = (cockpit as any).addEventListener("locationchanged", handleLocationChange);
+    cockpit.addEventListener("locationchanged", handleLocationChange);
 
-    return cleanup;
+    return () => cockpit.removeEventListener("locationchanged", handleLocationChange);
   }, []);
 
   // Navigation handlers
