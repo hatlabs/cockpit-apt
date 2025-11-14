@@ -21,19 +21,19 @@
  * revalidation, and optimization.
  */
 
-import { useState, useEffect } from 'react';
-import type { Package, PackageDetails, Section, UpgradablePackage } from '../lib/types';
-import * as api from '../lib/api';
-import { APTError } from '../lib/error-handler';
+import { useState, useEffect } from "react";
+import type { Package, PackageDetails, Section, UpgradablePackage } from "../lib/types";
+import * as api from "../lib/api";
+import { APTError } from "../lib/error-handler";
 
 /**
  * Hook state interface
  */
 interface UseQueryResult<T> {
-    data: T | null;
-    loading: boolean;
-    error: APTError | null;
-    refetch: () => Promise<void>;
+  data: T | null;
+  loading: boolean;
+  error: APTError | null;
+  refetch: () => Promise<void>;
 }
 
 /**
@@ -58,34 +58,34 @@ interface UseQueryResult<T> {
  * }
  */
 export function useSearch(query: string, enabled: boolean = true): UseQueryResult<Package[]> {
-    const [data, setData] = useState<Package[] | null>(null);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<APTError | null>(null);
+  const [data, setData] = useState<Package[] | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<APTError | null>(null);
 
-    const fetchData = async () => {
-        if (!enabled || query.length < 2) {
-            setData(null);
-            return;
-        }
+  const fetchData = async () => {
+    if (!enabled || query.length < 2) {
+      setData(null);
+      return;
+    }
 
-        setLoading(true);
-        setError(null);
+    setLoading(true);
+    setError(null);
 
-        try {
-            const result = await api.searchPackages(query);
-            setData(result);
-        } catch (err) {
-            setError(err as APTError);
-        } finally {
-            setLoading(false);
-        }
-    };
+    try {
+      const result = await api.searchPackages(query);
+      setData(result);
+    } catch (err) {
+      setError(err as APTError);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    useEffect(() => {
-        fetchData();
-    }, [query, enabled]);
+  useEffect(() => {
+    fetchData();
+  }, [query, enabled]);
 
-    return { data, loading, error, refetch: fetchData };
+  return { data, loading, error, refetch: fetchData };
 }
 
 /**
@@ -112,44 +112,44 @@ export function useSearch(query: string, enabled: boolean = true): UseQueryResul
  * }
  */
 export function usePackageDetails(
-    packageName: string,
-    enabled: boolean = true
+  packageName: string,
+  enabled: boolean = true
 ): UseQueryResult<PackageDetails> {
-    const [data, setData] = useState<PackageDetails | null>(null);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<APTError | null>(null);
+  const [data, setData] = useState<PackageDetails | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<APTError | null>(null);
 
-    const fetchData = async (forceRefresh: boolean = false, silent: boolean = false) => {
-        if (!enabled || !packageName) {
-            setData(null);
-            return;
-        }
+  const fetchData = async (forceRefresh: boolean = false, silent: boolean = false) => {
+    if (!enabled || !packageName) {
+      setData(null);
+      return;
+    }
 
-        // Only set loading state if not a silent refetch
-        if (!silent) {
-            setLoading(true);
-        }
-        setError(null);
+    // Only set loading state if not a silent refetch
+    if (!silent) {
+      setLoading(true);
+    }
+    setError(null);
 
-        try {
-            // Use cache by default, but allow forcing fresh data
-            const result = await api.getPackageDetails(packageName, !forceRefresh);
-            setData(result);
-        } catch (err) {
-            setError(err as APTError);
-        } finally {
-            if (!silent) {
-                setLoading(false);
-            }
-        }
-    };
+    try {
+      // Use cache by default, but allow forcing fresh data
+      const result = await api.getPackageDetails(packageName, !forceRefresh);
+      setData(result);
+    } catch (err) {
+      setError(err as APTError);
+    } finally {
+      if (!silent) {
+        setLoading(false);
+      }
+    }
+  };
 
-    useEffect(() => {
-        fetchData();
-    }, [packageName, enabled]);
+  useEffect(() => {
+    fetchData();
+  }, [packageName, enabled]);
 
-    // Return refetch that forces fresh data silently (without showing loading skeleton)
-    return { data, loading, error, refetch: () => fetchData(true, true) };
+  // Return refetch that forces fresh data silently (without showing loading skeleton)
+  return { data, loading, error, refetch: () => fetchData(true, true) };
 }
 
 /**
@@ -176,34 +176,34 @@ export function usePackageDetails(
  * }
  */
 export function useSections(enabled: boolean = true): UseQueryResult<Section[]> {
-    const [data, setData] = useState<Section[] | null>(null);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<APTError | null>(null);
+  const [data, setData] = useState<Section[] | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<APTError | null>(null);
 
-    const fetchData = async () => {
-        if (!enabled) {
-            setData(null);
-            return;
-        }
+  const fetchData = async () => {
+    if (!enabled) {
+      setData(null);
+      return;
+    }
 
-        setLoading(true);
-        setError(null);
+    setLoading(true);
+    setError(null);
 
-        try {
-            const result = await api.listSections();
-            setData(result);
-        } catch (err) {
-            setError(err as APTError);
-        } finally {
-            setLoading(false);
-        }
-    };
+    try {
+      const result = await api.listSections();
+      setData(result);
+    } catch (err) {
+      setError(err as APTError);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    useEffect(() => {
-        fetchData();
-    }, [enabled]);
+  useEffect(() => {
+    fetchData();
+  }, [enabled]);
 
-    return { data, loading, error, refetch: fetchData };
+  return { data, loading, error, refetch: fetchData };
 }
 
 /**
@@ -227,37 +227,37 @@ export function useSections(enabled: boolean = true): UseQueryResult<Section[]> 
  * }
  */
 export function useIsInstalled(
-    packageName: string,
-    enabled: boolean = true
+  packageName: string,
+  enabled: boolean = true
 ): UseQueryResult<boolean> {
-    const [data, setData] = useState<boolean | null>(null);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<APTError | null>(null);
+  const [data, setData] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<APTError | null>(null);
 
-    const fetchData = async () => {
-        if (!enabled || !packageName) {
-            setData(null);
-            return;
-        }
+  const fetchData = async () => {
+    if (!enabled || !packageName) {
+      setData(null);
+      return;
+    }
 
-        setLoading(true);
-        setError(null);
+    setLoading(true);
+    setError(null);
 
-        try {
-            const result = await api.isInstalled(packageName);
-            setData(result);
-        } catch (err) {
-            setError(err as APTError);
-        } finally {
-            setLoading(false);
-        }
-    };
+    try {
+      const result = await api.isInstalled(packageName);
+      setData(result);
+    } catch (err) {
+      setError(err as APTError);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    useEffect(() => {
-        fetchData();
-    }, [packageName, enabled]);
+  useEffect(() => {
+    fetchData();
+  }, [packageName, enabled]);
 
-    return { data, loading, error, refetch: fetchData };
+  return { data, loading, error, refetch: fetchData };
 }
 
 /**
@@ -281,34 +281,34 @@ export function useIsInstalled(
  * }
  */
 export function useInstalledPackages(enabled: boolean = true): UseQueryResult<Package[]> {
-    const [data, setData] = useState<Package[] | null>(null);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<APTError | null>(null);
+  const [data, setData] = useState<Package[] | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<APTError | null>(null);
 
-    const fetchData = async () => {
-        if (!enabled) {
-            setData(null);
-            return;
-        }
+  const fetchData = async () => {
+    if (!enabled) {
+      setData(null);
+      return;
+    }
 
-        setLoading(true);
-        setError(null);
+    setLoading(true);
+    setError(null);
 
-        try {
-            const result = await api.listInstalledPackages();
-            setData(result);
-        } catch (err) {
-            setError(err as APTError);
-        } finally {
-            setLoading(false);
-        }
-    };
+    try {
+      const result = await api.listInstalledPackages();
+      setData(result);
+    } catch (err) {
+      setError(err as APTError);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    useEffect(() => {
-        fetchData();
-    }, [enabled]);
+  useEffect(() => {
+    fetchData();
+  }, [enabled]);
 
-    return { data, loading, error, refetch: fetchData };
+  return { data, loading, error, refetch: fetchData };
 }
 
 /**
@@ -327,33 +327,35 @@ export function useInstalledPackages(enabled: boolean = true): UseQueryResult<Pa
  *   return count > 0 ? <Badge>{count} updates</Badge> : null;
  * }
  */
-export function useUpgradablePackages(enabled: boolean = true): UseQueryResult<UpgradablePackage[]> {
-    const [data, setData] = useState<UpgradablePackage[] | null>(null);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<APTError | null>(null);
+export function useUpgradablePackages(
+  enabled: boolean = true
+): UseQueryResult<UpgradablePackage[]> {
+  const [data, setData] = useState<UpgradablePackage[] | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<APTError | null>(null);
 
-    const fetchData = async () => {
-        if (!enabled) {
-            setData(null);
-            return;
-        }
+  const fetchData = async () => {
+    if (!enabled) {
+      setData(null);
+      return;
+    }
 
-        setLoading(true);
-        setError(null);
+    setLoading(true);
+    setError(null);
 
-        try {
-            const result = await api.listUpgradablePackages();
-            setData(result);
-        } catch (err) {
-            setError(err as APTError);
-        } finally {
-            setLoading(false);
-        }
-    };
+    try {
+      const result = await api.listUpgradablePackages();
+      setData(result);
+    } catch (err) {
+      setError(err as APTError);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    useEffect(() => {
-        fetchData();
-    }, [enabled]);
+  useEffect(() => {
+    fetchData();
+  }, [enabled]);
 
-    return { data, loading, error, refetch: fetchData };
+  return { data, loading, error, refetch: fetchData };
 }

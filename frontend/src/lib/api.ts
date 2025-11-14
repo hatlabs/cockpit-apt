@@ -33,9 +33,9 @@
  *   const details = await getPackageDetails('nginx');
  */
 
-import type { Package, PackageDetails, Section, Dependency, UpgradablePackage } from './types';
-import { cache } from './cache-manager';
-import { translateError } from './error-handler';
+import { cache } from "./cache-manager";
+import { translateError } from "./error-handler";
+import type { Dependency, Package, PackageDetails, Section, UpgradablePackage } from "./types";
 
 /**
  * Execute cockpit-apt-bridge command and parse JSON response
@@ -45,44 +45,44 @@ import { translateError } from './error-handler';
  * @throws APTError if command fails
  */
 async function executeCommand(args: string[]): Promise<unknown> {
-    return new Promise((resolve, reject) => {
-        let stdout = '';
-        let stderr = '';
+  return new Promise((resolve, reject) => {
+    let stdout = "";
+    let stderr = "";
 
-        const process = cockpit.spawn(['cockpit-apt-bridge', ...args], {
-            err: 'message',
-            superuser: 'try',
-        });
-
-        process
-            .stream((data: string) => {
-                stdout += data;
-            })
-            .fail((error: unknown, data: string | null) => {
-                stderr = data || '';
-
-                // Try to parse stderr as JSON error
-                if (stderr) {
-                    try {
-                        const errorObj = JSON.parse(stderr);
-                        reject(translateError(errorObj));
-                        return;
-                    } catch {
-                        // Not JSON, use stderr as message
-                    }
-                }
-
-                reject(translateError(error));
-            })
-            .done(() => {
-                try {
-                    const result = JSON.parse(stdout);
-                    resolve(result);
-                } catch (error) {
-                    reject(translateError(new Error(`Failed to parse JSON response: ${error}`)));
-                }
-            });
+    const process = cockpit.spawn(["cockpit-apt-bridge", ...args], {
+      err: "message",
+      superuser: "try",
     });
+
+    process
+      .stream((data: string) => {
+        stdout += data;
+      })
+      .fail((error: unknown, data: string | null) => {
+        stderr = data || "";
+
+        // Try to parse stderr as JSON error
+        if (stderr) {
+          try {
+            const errorObj = JSON.parse(stderr);
+            reject(translateError(errorObj));
+            return;
+          } catch {
+            // Not JSON, use stderr as message
+          }
+        }
+
+        reject(translateError(error));
+      })
+      .done(() => {
+        try {
+          const result = JSON.parse(stdout);
+          resolve(result);
+        } catch (error) {
+          reject(translateError(new Error(`Failed to parse JSON response: ${error}`)));
+        }
+      });
+  });
 }
 
 /**
@@ -94,27 +94,27 @@ async function executeCommand(args: string[]): Promise<unknown> {
  * @throws APTError if search fails
  */
 export async function searchPackages(query: string, useCache: boolean = true): Promise<Package[]> {
-    if (query.length < 2) {
-        throw new Error('Search query must be at least 2 characters');
+  if (query.length < 2) {
+    throw new Error("Search query must be at least 2 characters");
+  }
+
+  const cacheKey = `search:${query}`;
+
+  // Check cache
+  if (useCache) {
+    const cached = cache.get<Package[]>(cacheKey);
+    if (cached) {
+      return cached;
     }
+  }
 
-    const cacheKey = `search:${query}`;
+  // Execute command
+  const result = (await executeCommand(["search", query])) as Package[];
 
-    // Check cache
-    if (useCache) {
-        const cached = cache.get<Package[]>(cacheKey);
-        if (cached) {
-            return cached;
-        }
-    }
+  // Cache result
+  cache.set(cacheKey, result);
 
-    // Execute command
-    const result = await executeCommand(['search', query]) as Package[];
-
-    // Cache result
-    cache.set(cacheKey, result);
-
-    return result;
+  return result;
 }
 
 /**
@@ -126,26 +126,26 @@ export async function searchPackages(query: string, useCache: boolean = true): P
  * @throws APTError if package not found or command fails
  */
 export async function getPackageDetails(
-    packageName: string,
-    useCache: boolean = true
+  packageName: string,
+  useCache: boolean = true
 ): Promise<PackageDetails> {
-    const cacheKey = `details:${packageName}`;
+  const cacheKey = `details:${packageName}`;
 
-    // Check cache
-    if (useCache) {
-        const cached = cache.get<PackageDetails>(cacheKey);
-        if (cached) {
-            return cached;
-        }
+  // Check cache
+  if (useCache) {
+    const cached = cache.get<PackageDetails>(cacheKey);
+    if (cached) {
+      return cached;
     }
+  }
 
-    // Execute command
-    const result = await executeCommand(['details', packageName]) as PackageDetails;
+  // Execute command
+  const result = (await executeCommand(["details", packageName])) as PackageDetails;
 
-    // Cache result
-    cache.set(cacheKey, result);
+  // Cache result
+  cache.set(cacheKey, result);
 
-    return result;
+  return result;
 }
 
 /**
@@ -156,23 +156,23 @@ export async function getPackageDetails(
  * @throws APTError if command fails
  */
 export async function listSections(useCache: boolean = true): Promise<Section[]> {
-    const cacheKey = 'sections';
+  const cacheKey = "sections";
 
-    // Check cache
-    if (useCache) {
-        const cached = cache.get<Section[]>(cacheKey);
-        if (cached) {
-            return cached;
-        }
+  // Check cache
+  if (useCache) {
+    const cached = cache.get<Section[]>(cacheKey);
+    if (cached) {
+      return cached;
     }
+  }
 
-    // Execute command
-    const result = await executeCommand(['sections']) as Section[];
+  // Execute command
+  const result = (await executeCommand(["sections"])) as Section[];
 
-    // Cache result
-    cache.set(cacheKey, result);
+  // Cache result
+  cache.set(cacheKey, result);
 
-    return result;
+  return result;
 }
 
 /**
@@ -184,26 +184,26 @@ export async function listSections(useCache: boolean = true): Promise<Section[]>
  * @throws APTError if command fails
  */
 export async function listPackagesBySection(
-    sectionName: string,
-    useCache: boolean = true
+  sectionName: string,
+  useCache: boolean = true
 ): Promise<Package[]> {
-    const cacheKey = `section:${sectionName}`;
+  const cacheKey = `section:${sectionName}`;
 
-    // Check cache
-    if (useCache) {
-        const cached = cache.get<Package[]>(cacheKey);
-        if (cached) {
-            return cached;
-        }
+  // Check cache
+  if (useCache) {
+    const cached = cache.get<Package[]>(cacheKey);
+    if (cached) {
+      return cached;
     }
+  }
 
-    // Execute command
-    const result = await executeCommand(['list-section', sectionName]) as Package[];
+  // Execute command
+  const result = (await executeCommand(["list-section", sectionName])) as Package[];
 
-    // Cache result
-    cache.set(cacheKey, result);
+  // Cache result
+  cache.set(cacheKey, result);
 
-    return result;
+  return result;
 }
 
 /**
@@ -214,23 +214,23 @@ export async function listPackagesBySection(
  * @throws APTError if command fails
  */
 export async function listInstalledPackages(useCache: boolean = true): Promise<Package[]> {
-    const cacheKey = 'installed';
+  const cacheKey = "installed";
 
-    // Check cache
-    if (useCache) {
-        const cached = cache.get<Package[]>(cacheKey);
-        if (cached) {
-            return cached;
-        }
+  // Check cache
+  if (useCache) {
+    const cached = cache.get<Package[]>(cacheKey);
+    if (cached) {
+      return cached;
     }
+  }
 
-    // Execute command
-    const result = await executeCommand(['list-installed']) as Package[];
+  // Execute command
+  const result = (await executeCommand(["list-installed"])) as Package[];
 
-    // Cache result
-    cache.set(cacheKey, result);
+  // Cache result
+  cache.set(cacheKey, result);
 
-    return result;
+  return result;
 }
 
 /**
@@ -240,24 +240,26 @@ export async function listInstalledPackages(useCache: boolean = true): Promise<P
  * @returns List of upgradable packages sorted by name
  * @throws APTError if command fails
  */
-export async function listUpgradablePackages(useCache: boolean = true): Promise<UpgradablePackage[]> {
-    const cacheKey = 'upgradable';
+export async function listUpgradablePackages(
+  useCache: boolean = true
+): Promise<UpgradablePackage[]> {
+  const cacheKey = "upgradable";
 
-    // Check cache
-    if (useCache) {
-        const cached = cache.get<UpgradablePackage[]>(cacheKey);
-        if (cached) {
-            return cached;
-        }
+  // Check cache
+  if (useCache) {
+    const cached = cache.get<UpgradablePackage[]>(cacheKey);
+    if (cached) {
+      return cached;
     }
+  }
 
-    // Execute command
-    const result = await executeCommand(['list-upgradable']) as UpgradablePackage[];
+  // Execute command
+  const result = (await executeCommand(["list-upgradable"])) as UpgradablePackage[];
 
-    // Cache result
-    cache.set(cacheKey, result);
+  // Cache result
+  cache.set(cacheKey, result);
 
-    return result;
+  return result;
 }
 
 /**
@@ -269,26 +271,26 @@ export async function listUpgradablePackages(useCache: boolean = true): Promise<
  * @throws APTError if package not found or command fails
  */
 export async function getPackageDependencies(
-    packageName: string,
-    useCache: boolean = true
+  packageName: string,
+  useCache: boolean = true
 ): Promise<Dependency[]> {
-    const cacheKey = `dependencies:${packageName}`;
+  const cacheKey = `dependencies:${packageName}`;
 
-    // Check cache
-    if (useCache) {
-        const cached = cache.get<Dependency[]>(cacheKey);
-        if (cached) {
-            return cached;
-        }
+  // Check cache
+  if (useCache) {
+    const cached = cache.get<Dependency[]>(cacheKey);
+    if (cached) {
+      return cached;
     }
+  }
 
-    // Execute command
-    const result = await executeCommand(['dependencies', packageName]) as Dependency[];
+  // Execute command
+  const result = (await executeCommand(["dependencies", packageName])) as Dependency[];
 
-    // Cache result
-    cache.set(cacheKey, result);
+  // Cache result
+  cache.set(cacheKey, result);
 
-    return result;
+  return result;
 }
 
 /**
@@ -300,26 +302,26 @@ export async function getPackageDependencies(
  * @throws APTError if package not found or command fails
  */
 export async function getReverseDependencies(
-    packageName: string,
-    useCache: boolean = true
+  packageName: string,
+  useCache: boolean = true
 ): Promise<string[]> {
-    const cacheKey = `reverse-deps:${packageName}`;
+  const cacheKey = `reverse-deps:${packageName}`;
 
-    // Check cache
-    if (useCache) {
-        const cached = cache.get<string[]>(cacheKey);
-        if (cached) {
-            return cached;
-        }
+  // Check cache
+  if (useCache) {
+    const cached = cache.get<string[]>(cacheKey);
+    if (cached) {
+      return cached;
     }
+  }
 
-    // Execute command
-    const result = await executeCommand(['reverse-dependencies', packageName]) as string[];
+  // Execute command
+  const result = (await executeCommand(["reverse-dependencies", packageName])) as string[];
 
-    // Cache result
-    cache.set(cacheKey, result);
+  // Cache result
+  cache.set(cacheKey, result);
 
-    return result;
+  return result;
 }
 
 /**
@@ -334,33 +336,33 @@ export async function getReverseDependencies(
  * @throws APTError if package not installed or command fails
  */
 export async function getPackageFiles(
-    packageName: string,
-    useCache: boolean = true
+  packageName: string,
+  useCache: boolean = true
 ): Promise<string[]> {
-    const cacheKey = `files:${packageName}`;
+  const cacheKey = `files:${packageName}`;
 
-    // Check cache
-    if (useCache) {
-        const cached = cache.get<string[]>(cacheKey);
-        if (cached) {
-            return cached;
-        }
+  // Check cache
+  if (useCache) {
+    const cached = cache.get<string[]>(cacheKey);
+    if (cached) {
+      return cached;
     }
+  }
 
-    // Execute command
-    const result = await executeCommand(['files', packageName]) as string[];
+  // Execute command
+  const result = (await executeCommand(["files", packageName])) as string[];
 
-    // Cache result
-    cache.set(cacheKey, result);
+  // Cache result
+  cache.set(cacheKey, result);
 
-    return result;
+  return result;
 }
 
 /**
  * Clear all cached API results
  */
 export function clearCache(): void {
-    cache.clear();
+  cache.clear();
 }
 
 /**
@@ -370,7 +372,7 @@ export function clearCache(): void {
  * @returns Number of entries invalidated
  */
 export function invalidateCache(pattern: string): number {
-    return cache.invalidatePattern(pattern);
+  return cache.invalidatePattern(pattern);
 }
 
 // ==================== Utility Functions ====================
@@ -384,17 +386,17 @@ export function invalidateCache(pattern: string): number {
  * @throws APTError if command fails
  */
 export async function isInstalled(packageName: string, useCache: boolean = true): Promise<boolean> {
-    try {
-        const details = await getPackageDetails(packageName, useCache);
-        return details.installed;
-    } catch (error) {
-        // If package not found, it's definitely not installed
-        const aptError = translateError(error);
-        if (aptError.code === 'PACKAGE_NOT_FOUND') {
-            return false;
-        }
-        throw error;
+  try {
+    const details = await getPackageDetails(packageName, useCache);
+    return details.installed;
+  } catch (error) {
+    // If package not found, it's definitely not installed
+    const aptError = translateError(error);
+    if (aptError.code === "PACKAGE_NOT_FOUND") {
+      return false;
     }
+    throw error;
+  }
 }
 
 /**
@@ -405,21 +407,23 @@ export async function isInstalled(packageName: string, useCache: boolean = true)
  * @returns True if APT is locked
  */
 export async function isLocked(): Promise<boolean> {
-    try {
-        // Try to list sections (quick, read-only operation)
-        await listSections(false); // Don't use cache
-        return false; // If successful, not locked
-    } catch (error) {
-        const aptError = translateError(error);
-        // Check for lock-related errors
-        if (aptError.code === 'LOCKED' ||
-            aptError.message.toLowerCase().includes('lock') ||
-            aptError.message.toLowerCase().includes('unable to acquire')) {
-            return true;
-        }
-        // Other errors don't indicate a lock
-        return false;
+  try {
+    // Try to list sections (quick, read-only operation)
+    await listSections(false); // Don't use cache
+    return false; // If successful, not locked
+  } catch (error) {
+    const aptError = translateError(error);
+    // Check for lock-related errors
+    if (
+      aptError.code === "LOCKED" ||
+      aptError.message.toLowerCase().includes("lock") ||
+      aptError.message.toLowerCase().includes("unable to acquire")
+    ) {
+      return true;
     }
+    // Other errors don't indicate a lock
+    return false;
+  }
 }
 
 /**
@@ -432,22 +436,22 @@ export async function isLocked(): Promise<boolean> {
  * @returns True if lock was released, false if timeout
  */
 export async function waitForLock(
-    timeoutMs: number = 30000,
-    pollIntervalMs: number = 1000
+  timeoutMs: number = 30000,
+  pollIntervalMs: number = 1000
 ): Promise<boolean> {
-    const startTime = Date.now();
+  const startTime = Date.now();
 
-    while (Date.now() - startTime < timeoutMs) {
-        const locked = await isLocked();
-        if (!locked) {
-            return true; // Lock released
-        }
-
-        // Wait before next check
-        await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+  while (Date.now() - startTime < timeoutMs) {
+    const locked = await isLocked();
+    if (!locked) {
+      return true; // Lock released
     }
 
-    return false; // Timeout
+    // Wait before next check
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+  }
+
+  return false; // Timeout
 }
 
 // ==================== Operation Functions ====================
@@ -465,107 +469,107 @@ export async function waitForLock(
  * @throws APTError if command fails
  */
 async function executeWithProgress(
-    args: string[],
-    onProgress?: (progress: { percentage: number; message: string }) => void
+  args: string[],
+  onProgress?: (progress: { percentage: number; message: string }) => void
 ): Promise<unknown> {
-    return new Promise((resolve, reject) => {
-        let stdout = '';
-        let stderr = '';
-        let finalResult: unknown = null;
+  return new Promise((resolve, reject) => {
+    let stdout = "";
+    let stderr = "";
+    let finalResult: unknown = null;
 
-        const process = cockpit.spawn(['cockpit-apt-bridge', ...args], {
-            err: 'message',
-            superuser: 'require', // Operations need sudo
-        });
-
-        process
-            .stream((data: string) => {
-                stdout += data;
-
-                // Process complete JSON lines
-                let lines = stdout.split('\n');
-                stdout = lines.pop() || ''; // Keep incomplete line in buffer
-
-                for (const line of lines) {
-                    if (!line.trim()) continue;
-
-                    try {
-                        const obj = JSON.parse(line);
-
-                        // Check if it's a progress update
-                        if (obj.type === 'progress' && onProgress) {
-                            onProgress({
-                                percentage: obj.percentage,
-                                message: obj.message
-                            });
-                        } else if (obj.success !== undefined) {
-                            // This is the final result
-                            finalResult = obj;
-                        }
-                    } catch (e) {
-                        // Not JSON, skip
-                    }
-                }
-            })
-            .fail((error: unknown, data: string | null) => {
-                stderr = data || '';
-
-                // Try to parse stderr as JSON error
-                if (stderr) {
-                    try {
-                        const errorObj = JSON.parse(stderr);
-                        reject(translateError(errorObj));
-                        return;
-                    } catch {
-                        // Not JSON, use stderr as message
-                    }
-                }
-
-                reject(translateError(error));
-            })
-            .done(() => {
-                // If we got a final result from streaming, use it
-                if (finalResult) {
-                    resolve(finalResult);
-                    return;
-                }
-
-                // Process any remaining data in the buffer
-                if (stdout.trim()) {
-                    // Try to parse remaining lines
-                    const lines = stdout.split('\n');
-                    for (const line of lines) {
-                        if (!line.trim()) continue;
-
-                        try {
-                            const obj = JSON.parse(line);
-
-                            // Check if it's a progress update
-                            if (obj.type === 'progress' && onProgress) {
-                                onProgress({
-                                    percentage: obj.percentage,
-                                    message: obj.message
-                                });
-                            } else if (obj.success !== undefined) {
-                                // This is the final result
-                                finalResult = obj;
-                            }
-                        } catch (e) {
-                            // Not JSON, skip
-                        }
-                    }
-
-                    // If we found a final result, use it
-                    if (finalResult) {
-                        resolve(finalResult);
-                        return;
-                    }
-                }
-
-                // No result found
-                reject(translateError(new Error('Command completed but returned no result')));
-            });
+    const process = cockpit.spawn(["cockpit-apt-bridge", ...args], {
+      err: "message",
+      superuser: "require", // Operations need sudo
     });
+
+    process
+      .stream((data: string) => {
+        stdout += data;
+
+        // Process complete JSON lines
+        const lines = stdout.split("\n");
+        stdout = lines.pop() || ""; // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+
+          try {
+            const obj = JSON.parse(line);
+
+            // Check if it's a progress update
+            if (obj.type === "progress" && onProgress) {
+              onProgress({
+                percentage: obj.percentage,
+                message: obj.message,
+              });
+            } else if (obj.success !== undefined) {
+              // This is the final result
+              finalResult = obj;
+            }
+          } catch (e) {
+            // Not JSON, skip
+          }
+        }
+      })
+      .fail((error: unknown, data: string | null) => {
+        stderr = data || "";
+
+        // Try to parse stderr as JSON error
+        if (stderr) {
+          try {
+            const errorObj = JSON.parse(stderr);
+            reject(translateError(errorObj));
+            return;
+          } catch {
+            // Not JSON, use stderr as message
+          }
+        }
+
+        reject(translateError(error));
+      })
+      .done(() => {
+        // If we got a final result from streaming, use it
+        if (finalResult) {
+          resolve(finalResult);
+          return;
+        }
+
+        // Process any remaining data in the buffer
+        if (stdout.trim()) {
+          // Try to parse remaining lines
+          const lines = stdout.split("\n");
+          for (const line of lines) {
+            if (!line.trim()) continue;
+
+            try {
+              const obj = JSON.parse(line);
+
+              // Check if it's a progress update
+              if (obj.type === "progress" && onProgress) {
+                onProgress({
+                  percentage: obj.percentage,
+                  message: obj.message,
+                });
+              } else if (obj.success !== undefined) {
+                // This is the final result
+                finalResult = obj;
+              }
+            } catch (e) {
+              // Not JSON, skip
+            }
+          }
+
+          // If we found a final result, use it
+          if (finalResult) {
+            resolve(finalResult);
+            return;
+          }
+        }
+
+        // No result found
+        reject(translateError(new Error("Command completed but returned no result")));
+      });
+  });
 }
 
 /**
@@ -576,19 +580,21 @@ async function executeWithProgress(
  * @throws APTError if installation fails
  */
 export async function installPackage(
-    packageName: string,
-    onProgress?: (progress: { percentage: number; message: string }) => void
+  packageName: string,
+  onProgress?: (progress: { percentage: number; message: string }) => void
 ): Promise<void> {
-    const result = await executeWithProgress(['install', packageName], onProgress) as { success: boolean };
+  const result = (await executeWithProgress(["install", packageName], onProgress)) as {
+    success: boolean;
+  };
 
-    if (!result.success) {
-        throw translateError(new Error('Installation failed'));
-    }
+  if (!result.success) {
+    throw translateError(new Error("Installation failed"));
+  }
 
-    // Invalidate caches after successful install
-    invalidateCache('installed');
-    invalidateCache('upgradable');
-    invalidateCache(`details:${packageName}`);
+  // Invalidate caches after successful install
+  invalidateCache("installed");
+  invalidateCache("upgradable");
+  invalidateCache(`details:${packageName}`);
 }
 
 /**
@@ -599,18 +605,20 @@ export async function installPackage(
  * @throws APTError if removal fails
  */
 export async function removePackage(
-    packageName: string,
-    onProgress?: (progress: { percentage: number; message: string }) => void
+  packageName: string,
+  onProgress?: (progress: { percentage: number; message: string }) => void
 ): Promise<void> {
-    const result = await executeWithProgress(['remove', packageName], onProgress) as { success: boolean };
+  const result = (await executeWithProgress(["remove", packageName], onProgress)) as {
+    success: boolean;
+  };
 
-    if (!result.success) {
-        throw translateError(new Error('Removal failed'));
-    }
+  if (!result.success) {
+    throw translateError(new Error("Removal failed"));
+  }
 
-    // Invalidate caches after successful removal
-    invalidateCache('installed');
-    invalidateCache(`details:${packageName}`);
+  // Invalidate caches after successful removal
+  invalidateCache("installed");
+  invalidateCache(`details:${packageName}`);
 }
 
 /**
@@ -620,14 +628,14 @@ export async function removePackage(
  * @throws APTError if update fails
  */
 export async function updatePackageLists(
-    onProgress?: (progress: { percentage: number; message: string }) => void
+  onProgress?: (progress: { percentage: number; message: string }) => void
 ): Promise<void> {
-    const result = await executeWithProgress(['update'], onProgress) as { success: boolean };
+  const result = (await executeWithProgress(["update"], onProgress)) as { success: boolean };
 
-    if (!result.success) {
-        throw translateError(new Error('Update failed'));
-    }
+  if (!result.success) {
+    throw translateError(new Error("Update failed"));
+  }
 
-    // Clear all caches after successful update
-    clearCache();
+  // Clear all caches after successful update
+  clearCache();
 }

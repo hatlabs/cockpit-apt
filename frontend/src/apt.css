@@ -8,18 +8,28 @@
   --pf-v6-c-page__main-container--xs--MarginInlineEnd: var(--pf-v6-c-page--inset) !important;
 
   /* Keep all borders on mobile (not just top) */
-  --pf-v6-c-page__main-container--xs--BorderBlockEndWidth: var(--pf-t--global--border--width--main--default) !important;
-  --pf-v6-c-page__main-container--xs--BorderInlineStartWidth: var(--pf-t--global--border--width--main--default) !important;
-  --pf-v6-c-page__main-container--xs--BorderInlineEndWidth: var(--pf-t--global--border--width--main--default) !important;
+  --pf-v6-c-page__main-container--xs--BorderBlockEndWidth: var(
+    --pf-t--global--border--width--main--default
+  ) !important;
+  --pf-v6-c-page__main-container--xs--BorderInlineStartWidth: var(
+    --pf-t--global--border--width--main--default
+  ) !important;
+  --pf-v6-c-page__main-container--xs--BorderInlineEndWidth: var(
+    --pf-t--global--border--width--main--default
+  ) !important;
 }
 
 /* This variable is applied on the child .pf-v6-c-page__main-container element */
 .pf-v6-c-page__main-container {
   /* Keep border radius on mobile */
-  --pf-v6-c-page__main-container--xs--BorderRadius: var(--pf-t--global--border--radius--medium) !important;
+  --pf-v6-c-page__main-container--xs--BorderRadius: var(
+    --pf-t--global--border--radius--medium
+  ) !important;
 
   /* Keep bottom margin on mobile (don't let frame touch bottom edge) */
-  --pf-v6-c-page__main-container--xs--MaxHeight: calc(100% - var(--pf-t--global--spacer--lg)) !important;
+  --pf-v6-c-page__main-container--xs--MaxHeight: calc(
+    100% - var(--pf-t--global--spacer--lg)
+  ) !important;
 
   /* Fill viewport height at all viewport sizes (not just content height) */
   align-self: stretch !important;
