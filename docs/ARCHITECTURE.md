@@ -719,13 +719,15 @@ Display in UI components
 
 ### GitHub Actions Workflows
 
-The project uses GitHub Actions for continuous integration and deployment. The CI/CD pipeline consists of three main workflows:
+The project uses GitHub Actions for continuous integration and deployment. The CI/CD pipeline consists of four main workflows:
 
 > **Note on draft-release.yml:**
-> There is also an existing `draft-release.yml` workflow that runs on push to `main`.
-> It creates draft releases with source code only (no .deb packages) and reads the version from `frontend/package.json`.
-> With the introduction of `auto-prerelease.yml`, the intention is to migrate release automation to the new workflow.
-> For now, both workflows may coexist, but `draft-release.yml` should be considered deprecated and will be removed once `auto-prerelease.yml` is fully validated.
+> There is also a `draft-release.yml` workflow that runs on push to `main`.
+> It creates draft releases with source code (no .deb packages) for manual review before publishing stable releases.
+> This workflow is complementary to `auto-prerelease.yml`:
+> - `draft-release.yml`: Creates draft releases → manually publish → stable channel
+> - `auto-prerelease.yml`: Creates automatic pre-releases → unstable channel
+> Both workflows are required for the complete release process.
 
 #### 1. Build and Test Workflow (build.yml)
 
@@ -844,6 +846,47 @@ Package available in appropriate APT distribution
 **Channel Determination**:
 - GitHub pre-release → unstable channel → `unstable` distribution
 - Regular release → stable channel → `stable` distribution
+
+#### 4. Draft Release Workflow (draft-release.yml)
+
+**Trigger**: Push to main branch
+
+**Purpose**: Create draft releases for manual review before stable release
+
+**Process Flow**:
+
+```
+Push to main
+    ↓
+Read version from frontend/package.json
+    ↓
+Check if draft release exists
+    - If draft exists → delete and recreate
+    - If published exists → skip
+    ↓
+Build frontend (source code only)
+    ↓
+Generate release notes with changelog
+    ↓
+Create draft release with source code
+    - Marked as draft (not published)
+    - No .deb packages attached
+    ↓
+Developer reviews, edits release notes
+    ↓
+Developer publishes release (triggers release.yml)
+```
+
+**Key Characteristics**:
+- Creates draft releases, not pre-releases
+- Reads version from `frontend/package.json`, not `debian/changelog`
+- Includes source code only, no .deb packages
+- Requires manual publishing to become a stable release
+- Works together with auto-prerelease.yml (not competing workflows)
+
+**Workflow Comparison**:
+- `draft-release.yml`: Frontend version → Draft → Manual publish → Stable channel
+- `auto-prerelease.yml`: Debian version → Pre-release → Automatic → Unstable channel
 
 ### APT Repository Integration Architecture
 
