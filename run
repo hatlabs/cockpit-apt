@@ -20,37 +20,42 @@ readonly PROJECT_ROOT=$(pwd)
 readonly SCRIPT="$PROJECT_ROOT/$(basename "$0")"
 
 ################################################################################
+# Helper Functions
+
+function devtools {
+  #@ Run command in devtools container
+  docker compose -f docker/docker-compose.devtools.yml run --rm devtools "$@"
+}
+
+################################################################################
 # Backend Development Commands
 
 function test {
   #@ Run backend tests with pytest
   #@ Category: Backend
   echo "🧪 Running backend tests..."
-  docker compose -f docker/docker-compose.devtools.yml run --rm devtools \
-    bash -c "uv sync --extra dev && uv run pytest $*"
+  devtools bash -c "uv sync --extra dev && uv run pytest $*"
 }
 
 function lint {
   #@ Run ruff linter on backend code
   #@ Category: Backend
   echo "🔍 Running ruff linter..."
-  docker compose -f docker/docker-compose.devtools.yml run --rm devtools \
-    bash -c "uv sync --extra dev && uv run ruff check ."
+  devtools bash -c "uv sync --extra dev && uv run ruff check ."
 }
 
 function lint:fix {
   #@ Run ruff linter and fix issues
   #@ Category: Backend
   echo "🔧 Running ruff linter with auto-fix..."
-  docker compose -f docker/docker-compose.devtools.yml run --rm devtools \
-    bash -c "uv sync --extra dev && uv run ruff check --fix ."
+  devtools bash -c "uv sync --extra dev && uv run ruff check --fix ."
 }
 
 function format {
   #@ Format backend code with ruff
   #@ Category: Backend
   echo "✨ Formatting code with ruff..."
-  docker compose -f docker/docker-compose.devtools.yml run --rm devtools \
+  devtools \
     bash -c "uv sync --extra dev && uv run ruff format ."
 }
 
@@ -58,7 +63,7 @@ function typecheck {
   #@ Run pyright type checker
   #@ Category: Backend
   echo "📝 Running pyright type checker..."
-  docker compose -f docker/docker-compose.devtools.yml run --rm devtools \
+  devtools \
     bash -c "uv sync --extra dev && uv run pyright"
 }
 
@@ -69,14 +74,71 @@ function shell {
   echo "   Working directory: /workspace/backend"
   echo "   Exit with: exit or Ctrl+D"
   echo ""
-  docker compose -f docker/docker-compose.devtools.yml run --rm devtools bash
+  devtools bash
+}
+
+function dev:version:bump {
+  #@ Bump version (patch/minor/major)
+  #@ Category: Development
+  local part="${1:-patch}"
+
+  if [[ ! "$part" =~ ^(patch|minor|major)$ ]]; then
+    echo "❌ Error: Version part must be 'patch', 'minor', or 'major'"
+    echo "Usage: ./run dev:version:bump [patch|minor|major]"
+    return 1
+  fi
+
+  echo "📦 Bumping $part version..."
+
+  # Check if bumpversion is available
+  if ! command -v bumpversion &> /dev/null; then
+    echo "❌ bumpversion not found. Installing..."
+    echo "   Run: pip3 install --user bump2version"
+    echo "   Or: brew install bumpversion (on macOS)"
+    return 1
+  fi
+
+  # Read current version
+  CURRENT_VERSION=$(cat VERSION)
+
+  # Bump version with automatic commit (includes VERSION and backend/pyproject.toml)
+  bumpversion --current-version "$CURRENT_VERSION" \
+    --commit \
+    --message "chore: bump version to {new_version}" \
+    $part VERSION backend/pyproject.toml
+
+  # Read the new version that bumpversion created
+  NEW_VERSION=$(cat VERSION)
+
+  # Update debian/changelog and amend the commit
+  echo "📝 Updating debian/changelog to ${NEW_VERSION}-1..."
+  docker run --rm \
+    -v "$PWD:/workspace" \
+    -w /workspace \
+    -e DEBEMAIL="matti.airas@hatlabs.fi" \
+    -e DEBFULLNAME="Matti Airas" \
+    debian:trixie-slim \
+    bash -c "apt-get update -qq && apt-get install -y -qq devscripts >/dev/null 2>&1 && dch --newversion '${NEW_VERSION}-1' --distribution unstable 'Version bump to ${NEW_VERSION}'"
+
+  # Amend the commit to include debian/changelog
+  git add debian/changelog
+  git commit --amend --no-edit
+
+  echo "✅ Version bump complete: $NEW_VERSION"
+  echo ""
+  echo "Files updated and committed:"
+  echo "  - VERSION"
+  echo "  - backend/pyproject.toml"
+  echo "  - debian/changelog"
+  echo ""
+  echo "Commit created by bumpversion"
 }
 
 function build {
   #@ Build backend package
   #@ Category: Backend
   echo "📦 Building backend package..."
-  docker compose -f docker/docker-compose.devtools.yml run --rm devtools \
+  devtools \
     uv build
 }
 
@@ -84,7 +146,7 @@ function install:dev {
   #@ Install backend in development mode
   #@ Category: Backend
   echo "📥 Installing backend in development mode..."
-  docker compose -f docker/docker-compose.devtools.yml run --rm devtools \
+  devtools \
     uv pip install -e ".[dev]"
 }
 
