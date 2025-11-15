@@ -92,7 +92,7 @@ function dev:version:bump {
 
   # Check if bumpversion is available
   if ! command -v bumpversion &> /dev/null; then
-    echo "❌ bumpversion not found. Installing..."
+    echo "❌ bumpversion not found. Please install it:"
     echo "   Run: pip3 install --user bump2version"
     echo "   Or: brew install bumpversion (on macOS)"
     return 1

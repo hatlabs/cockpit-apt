@@ -789,6 +789,10 @@ Mark as pre-release (GitHub checkbox)
     ↓
 Attach .deb package to release
     ↓
+[GitHub triggers 'release.published' webhook event]
+    ↓
+[release.yml workflow receives event]
+    ↓
 Dispatch to apt.hatlabs.fi
     - Event: package-updated
     - Payload: {repository, distro: "any", channel: "unstable", component: "main"}
@@ -981,7 +985,9 @@ Code changes → PR → Review → Merge to main
     ↓
 [Automatic Pre-Release Workflow]
     ↓
-Build .deb → Create/update "unstable" pre-release
+Build .deb → Create/update version-tagged pre-release
+    ↓
+[GitHub webhook: release.published event]
     ↓
 Dispatch to apt.hatlabs.fi (channel: unstable)
     ↓
@@ -1004,7 +1010,7 @@ Production users: apt update && apt upgrade
 
 **Package Building**:
 - Ubuntu 22.04 runner (GitHub Actions)
-- Build dependencies: `dpkg-dev`, `debhelper`, `nodejs`, `npm`, `python3-pip`
+- Build dependencies: `dpkg-dev`, `debhelper`, `dh-python`, `python3-all`, `python3-apt`, `python3-hatchling`, `nodejs`, `npm`
 - Build command: `dpkg-buildpackage -b -uc -us` (binary package, unsigned)
 - Output: `cockpit-apt_VERSION_ARCH.deb`
 

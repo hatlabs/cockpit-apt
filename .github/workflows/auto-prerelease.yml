@@ -146,7 +146,7 @@ jobs:
         sudo apt install cockpit-apt
         \`\`\`
 
-        **Note:** Once apt.hatlabs.fi issue #17 is implemented, this package will be automatically available in the unstable channel.
+        **Note:** Once [hatlabs/apt.hatlabs.fi#17](https://github.com/hatlabs/apt.hatlabs.fi/issues/17) is implemented, this package will be automatically available in the unstable channel.
         EOF
 
         echo "Release notes created"
@@ -195,4 +195,5 @@ jobs:
         echo "Release tag: v${TAG_VERSION}"
         echo "Release URL: https://github.com/${{ github.repository }}/releases/tag/v${TAG_VERSION}"
         echo ""
-        echo "ℹ️  Note: The release.yml workflow will dispatch this to apt.hatlabs.fi unstable channel"
+        echo "ℹ️  Note: Creating this pre-release triggers the 'release.published' webhook event."
+        echo "   The release.yml workflow will automatically dispatch this to apt.hatlabs.fi unstable channel."
