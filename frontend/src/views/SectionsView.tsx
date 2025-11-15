@@ -15,37 +15,38 @@
  *   <SectionsView onNavigateToSection={(name) => navigateTo(`/sections/${name}`)} />
  */
 
-import React, { useMemo } from "react";
 import {
-  Title,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardBody,
-  Grid,
-  GridItem,
-  EmptyState,
-  EmptyStateBody,
-  Badge,
+    Badge,
+    Card,
+    CardBody,
+    CardHeader,
+    CardTitle,
+    EmptyState,
+    EmptyStateBody,
+    Grid,
+    GridItem,
+    Title,
 } from "@patternfly/react-core";
 import {
-  CubesIcon,
-  FolderIcon,
-  CodeIcon,
-  GlobeIcon,
-  VolumeUpIcon,
-  ImageIcon,
-  BookIcon,
-  TerminalIcon,
-  ServerIcon,
-  DatabaseIcon,
-  CogIcon,
-  EditIcon,
-  NetworkWiredIcon,
-  EnvelopeIcon,
-  DesktopIcon,
-  LayerGroupIcon,
+    BookIcon,
+    CodeIcon,
+    CogIcon,
+    CubesIcon,
+    DatabaseIcon,
+    DesktopIcon,
+    EditIcon,
+    EnvelopeIcon,
+    FolderIcon,
+    GlobeIcon,
+    ImageIcon,
+    LayerGroupIcon,
+    NetworkWiredIcon,
+    ServerIcon,
+    TerminalIcon,
+    VolumeUpIcon,
 } from "@patternfly/react-icons";
+import React, { useMemo } from "react";
+import type { CustomSection } from "../api/types";
 import { ErrorAlert } from "../components/ErrorAlert";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { useApp } from "../context/AppContext";
@@ -176,12 +177,8 @@ function getSectionIcon(sectionName: string): React.ReactNode {
  * Get a friendly display name for the base section (without prefix)
  * Can be overridden by custom section metadata
  */
-function getSectionDisplayName(
-  sectionName: string,
-  customSections?: Array<{ section: string; label: string; description: string; icon?: string }>
-): string {
+function getSectionDisplayName(sectionName: string, customSection?: CustomSection): string {
   // Check if there's a custom label for this section
-  const customSection = customSections?.find((cs) => cs.section === sectionName);
   if (customSection) {
     return customSection.label;
   }
@@ -192,29 +189,20 @@ function getSectionDisplayName(
 }
 
 /**
- * Get the icon for a section, preferring custom icon if available
+ * Get the icon for a section, with visual indicator if custom metadata exists
  */
 function getSectionIconWithCustom(
   sectionName: string,
-  customSections?: Array<{ section: string; label: string; description: string; icon?: string }>
+  customSection?: CustomSection
 ): React.ReactNode {
-  // Check if there's a custom icon for this section
-  const customSection = customSections?.find((cs) => cs.section === sectionName);
-  if (customSection?.icon) {
-    // For custom icons, we could support URLs or icon names
-    // For now, use the default icon mapping but mark it as custom
+  // Custom icons from store config are not yet implemented.
+  // The "Custom" badge is just a visual indicator that this section has custom metadata.
+  // TODO: Support custom icons via URLs or icon names in the future.
+  if (customSection) {
     return (
-      <div style={{ position: "relative", display: "inline-block" }}>
+      <div className="custom-section-badge">
         {getSectionIcon(sectionName)}
-        <Badge
-          isRead
-          style={{
-            position: "absolute",
-            top: "-0.25rem",
-            right: "-0.25rem",
-            fontSize: "0.6rem",
-          }}
-        >
+        <Badge isRead aria-label="Custom section configuration">
           Custom
         </Badge>
       </div>
@@ -307,6 +295,10 @@ export const SectionsView: React.FC<SectionsViewProps> = ({ onNavigateToSection 
           <Grid hasGutter>
             {sortedSections.map((section) => {
               const { prefix } = parseSectionName(section.name);
+              const customSection = customSections?.find((cs) => cs.section === section.name);
+              const displayName = getSectionDisplayName(section.name, customSection);
+              const icon = getSectionIconWithCustom(section.name, customSection);
+
               return (
                 <GridItem key={section.name} sm={6} md={4} lg={3} xl={2}>
                   <Card
@@ -321,11 +313,9 @@ export const SectionsView: React.FC<SectionsViewProps> = ({ onNavigateToSection 
                     style={{ height: "100%" }}
                     tabIndex={0}
                     role="button"
-                    aria-label={`View ${section.count} packages in ${prefix ? `${getArchiveLabel(prefix)} ` : ""}${getSectionDisplayName(section.name, customSections)} section`}
+                    aria-label={`View ${section.count} packages in ${prefix ? `${getArchiveLabel(prefix)} ` : ""}${displayName} section`}
                   >
-                    <CardHeader>
-                      {getSectionIconWithCustom(section.name, customSections)}
-                    </CardHeader>
+                    <CardHeader>{icon}</CardHeader>
 
                     <CardTitle>
                       {prefix && (
@@ -340,7 +330,7 @@ export const SectionsView: React.FC<SectionsViewProps> = ({ onNavigateToSection 
                           {getArchiveLabel(prefix)}
                         </div>
                       )}
-                      {getSectionDisplayName(section.name, customSections)}
+                      {displayName}
                     </CardTitle>
 
                     <CardBody>

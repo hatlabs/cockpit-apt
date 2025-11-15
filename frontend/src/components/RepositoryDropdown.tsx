@@ -7,11 +7,11 @@
  */
 
 import {
-  Dropdown,
-  DropdownItem,
-  DropdownList,
-  MenuToggle,
-  MenuToggleElement,
+    Dropdown,
+    DropdownItem,
+    DropdownList,
+    MenuToggle,
+    MenuToggleElement,
 } from "@patternfly/react-core";
 import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
@@ -48,6 +48,7 @@ export function RepositoryDropdown() {
       isOpen={isOpen}
       onSelect={handleSelect}
       onOpenChange={(isOpen) => setIsOpen(isOpen)}
+      aria-label="Repository selection"
       toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
         <MenuToggle ref={toggleRef} onClick={() => setIsOpen(!isOpen)} isExpanded={isOpen}>
           {getSelectedLabel()}

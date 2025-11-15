@@ -49,3 +49,16 @@
   gap: var(--pf-t--global--spacer--sm);
   align-items: center;
 }
+
+/* Custom section badge styling */
+.custom-section-badge {
+  position: relative;
+  display: inline-block;
+}
+
+.custom-section-badge .pf-v5-c-badge {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  font-size: 0.6rem;
+}

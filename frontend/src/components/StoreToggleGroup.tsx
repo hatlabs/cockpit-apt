@@ -34,8 +34,8 @@ export function StoreToggleGroup() {
 
   return (
     <div className="store-toggle-group">
-      <Label>Store:</Label>
-      <ToggleGroup aria-label="Store selection">
+      <Label id="store-label">Store:</Label>
+      <ToggleGroup aria-label="Store selection" aria-labelledby="store-label">
         <ToggleGroupItem
           text="All Stores"
           buttonId="store-all"
