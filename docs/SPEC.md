@@ -322,6 +322,118 @@ All Packages
 - [ ] Store subscription management
 - [ ] Multiple store selection
 
+## Release Management and Versioning
+
+### Version Strategy
+
+**Version Format**: Semantic versioning (MAJOR.MINOR.PATCH) following Debian standards.
+
+**Version Source of Truth**: The `debian/changelog` file is the canonical version source. All workflows read version information from this file.
+
+**Example**:
+```
+cockpit-apt (0.2.0-1) unstable; urgency=medium
+
+  * feat: Add container store filtering
+  * feat: Add repository dropdown
+
+ -- Matti Airas <matti.airas@hatlabs.fi>  Thu, 14 Nov 2025 18:00:00 +0000
+```
+
+### Release Channels
+
+**Stable Channel**:
+- Manually published releases
+- Thoroughly tested features
+- Production-ready quality
+- APT distribution: `stable` (cross-Debian-version)
+- Tag format: `v0.2.0`
+
+**Unstable Channel**:
+- Automatic pre-releases on every push to main
+- Latest development builds
+- May contain experimental features
+- APT distribution: `unstable`
+- Tag format: Same as version in `debian/changelog` (e.g., `v0.2.0`)
+- Marked as pre-release in GitHub
+
+### Automatic Pre-Release Workflow
+
+**Trigger**: Every push to main branch
+
+**Process**:
+1. Read version from `debian/changelog`
+2. Check if published (non-pre-release) release exists with same/higher version
+3. If published release exists: Skip (no pre-release needed)
+4. If no published release or version is higher:
+   - Build .deb package
+   - Create/update pre-release with version tag (e.g., `v0.2.0`)
+   - Mark as pre-release (GitHub checkbox)
+   - Attach .deb to release
+   - Dispatch to apt.hatlabs.fi with channel: "unstable"
+
+**Benefits**:
+- Continuous delivery to unstable channel
+- Early testing of new features
+- No manual intervention required
+- Published releases remain authoritative
+- Pre-releases use proper version tags (no special "unstable" tag)
+
+### Manual Stable Release Workflow
+
+**Trigger**: Developer publishes release (GitHub UI)
+
+**Process**:
+1. Detect release publication
+2. Determine channel: Regular release → stable
+3. Dispatch to apt.hatlabs.fi with correct channel
+
+**Note**: Stable releases should be created manually after thorough testing. The version in `debian/changelog` should be updated before release.
+
+### APT Repository Integration
+
+**Repository**: https://apt.hatlabs.fi
+
+**Dispatch Protocol**:
+```json
+{
+  "repository": "hatlabs/cockpit-apt",
+  "distro": "any",
+  "channel": "stable" | "unstable",
+  "component": "main"
+}
+```
+
+**Distribution Mapping**:
+- `distro: "any"` + `channel: "stable"` → `stable` distribution
+- `distro: "any"` + `channel: "unstable"` → `unstable` distribution
+- `distro: "bookworm"` + `channel: "stable"` → `bookworm-stable` distribution
+- `distro: "trixie"` + `channel: "stable"` → `trixie-stable` distribution
+
+**Note**: The apt.hatlabs.fi repository workflow must be updated to download from the latest pre-release (by date) when `channel: "unstable"` is received, rather than looking for a specific tag name. See apt.hatlabs.fi issue for implementation details.
+
+### Version Lifecycle
+
+**Development**:
+1. Features merged to main via PRs
+2. Each merge triggers automatic pre-release
+3. Version in `debian/changelog` remains constant until release
+
+**Preparing for Release**:
+1. Update `debian/changelog` with new version and changes
+2. Commit to main (triggers pre-release with new version)
+3. Test the unstable package
+
+**Stable Release**:
+1. Publish the release in GitHub (remove draft status)
+2. Automatic dispatch to apt.hatlabs.fi stable channel
+3. Package appears in stable APT distribution
+
+**Post-Release**:
+1. Continue development
+2. Pre-releases continue with same version until `debian/changelog` updated
+3. Users on unstable channel get continuous updates
+
 ## Related Documents
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) - Detailed system architecture

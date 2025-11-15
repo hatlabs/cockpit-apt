@@ -715,6 +715,349 @@ Display in UI components
 - No data migration required
 - Store features appear when store packages installed
 
+## CI/CD Pipeline
+
+### GitHub Actions Workflows
+
+The project uses GitHub Actions for continuous integration and deployment. The CI/CD pipeline consists of four main workflows:
+
+> **Note on draft-release.yml:**
+> There is also a `draft-release.yml` workflow that runs on push to `main`.
+> It creates draft releases with source code (no .deb packages) for manual review before publishing stable releases.
+> This workflow is complementary to `auto-prerelease.yml`:
+> - `draft-release.yml`: Creates draft releases → manually publish → stable channel
+> - `auto-prerelease.yml`: Creates automatic pre-releases → unstable channel
+> Both workflows are required for the complete release process.
+
+#### 1. Build and Test Workflow (build.yml)
+
+**Trigger**: Pull requests and pushes to main
+
+**Purpose**: Validate code quality and test coverage
+
+**Jobs**:
+
+**Backend Job**:
+- Runs in Docker container (python-apt requires Linux)
+- Executes pytest test suite (129 tests)
+- Runs ruff linting
+- Reports coverage metrics
+
+**Frontend Job**:
+- Sets up Node.js 18
+- Installs dependencies via npm
+- Builds TypeScript/React code
+- Runs vitest test suite (156 tests)
+
+**Wait Time**: ~3-5 minutes for all checks
+
+**Quality Gates**:
+- All tests must pass
+- No linting errors
+- TypeScript compilation successful
+
+#### 2. Automatic Pre-Release Workflow (auto-prerelease.yml)
+
+**Trigger**: Push to main branch
+
+**Purpose**: Continuous delivery to unstable APT channel
+
+**Process Flow**:
+
+```
+Push to main
+    ↓
+Read version from debian/changelog
+    ↓
+Check for stable release with same/higher version
+    ↓
+    ├─ Stable exists → Skip (log and exit)
+    ├─ No stable or version higher → Continue
+    ↓
+Setup build environment
+    ↓
+Build .deb package (dpkg-buildpackage)
+    ↓
+Check if pre-release with version tag exists
+    ↓
+    ├─ Exists → Delete old pre-release and tag
+    ├─ Does not exist → Continue
+    ↓
+Create pre-release with version tag (e.g., v0.2.0)
+    ↓
+Mark as pre-release (GitHub checkbox)
+    ↓
+Attach .deb package to release
+    ↓
+[GitHub triggers 'release.published' webhook event]
+    ↓
+[release.yml workflow receives event]
+    ↓
+Dispatch to apt.hatlabs.fi
+    - Event: package-updated
+    - Payload: {repository, distro: "any", channel: "unstable", component: "main"}
+    ↓
+apt.hatlabs.fi downloads .deb from latest pre-release
+    ↓
+Package available in unstable APT distribution
+```
+
+**Version Comparison Logic**:
+- Extract version from `debian/changelog` (e.g., "0.2.0-1")
+- List all non-draft, non-prerelease releases
+- Parse version numbers using semantic versioning
+- Skip if stable ≥ current version
+
+**Benefits**:
+- Every commit to main results in installable package
+- Rapid iteration for unstable channel users
+- No manual release management needed
+- Pre-releases automatically replaced (not accumulated)
+
+**Limitations**:
+- Only creates pre-releases (not stable releases)
+- Requires version bump in debian/changelog for new stable releases
+- Pre-releases with same version replace each other
+
+#### 3. Stable Release Workflow (release.yml)
+
+**Trigger**: Release published (manual action in GitHub UI)
+
+**Purpose**: Dispatch stable releases to APT repository
+
+**Process Flow**:
+
+```
+Developer publishes release
+    ↓
+Workflow detects release.published event
+    ↓
+Determine channel based on release type
+    - Pre-release checkbox checked → "unstable"
+    - Regular release → "stable"
+    ↓
+Dispatch to apt.hatlabs.fi
+    - Event: package-updated
+    - Payload: {repository, distro: "any", channel, component: "main"}
+    ↓
+apt.hatlabs.fi downloads .deb from release assets
+    ↓
+Package available in appropriate APT distribution
+```
+
+**Note**: This workflow does NOT build packages. The .deb package must already be attached to the release (typically by the auto-prerelease workflow or manual upload).
+
+**Channel Determination**:
+- GitHub pre-release → unstable channel → `unstable` distribution
+- Regular release → stable channel → `stable` distribution
+
+#### 4. Draft Release Workflow (draft-release.yml)
+
+**Trigger**: Push to main branch
+
+**Purpose**: Create draft releases for manual review before stable release
+
+**Process Flow**:
+
+```
+Push to main
+    ↓
+Read version from frontend/package.json
+    ↓
+Check if draft release exists
+    - If draft exists → delete and recreate
+    - If published exists → skip
+    ↓
+Build frontend (source code only)
+    ↓
+Generate release notes with changelog
+    ↓
+Create draft release with source code
+    - Marked as draft (not published)
+    - No .deb packages attached
+    ↓
+Developer reviews, edits release notes
+    ↓
+Developer publishes release (triggers release.yml)
+```
+
+**Key Characteristics**:
+- Creates draft releases, not pre-releases
+- Reads version from `frontend/package.json`, not `debian/changelog`
+- Includes source code only, no .deb packages
+- Requires manual publishing to become a stable release
+- Works together with auto-prerelease.yml (not competing workflows)
+
+**Workflow Comparison**:
+- `draft-release.yml`: Frontend version → Draft → Manual publish → Stable channel
+- `auto-prerelease.yml`: Debian version → Pre-release → Automatic → Unstable channel
+
+### APT Repository Integration Architecture
+
+#### Repository Structure
+
+**Location**: https://apt.hatlabs.fi (GitHub Pages)
+
+**Distributions**:
+- `stable`: Cross-Debian stable releases (bookworm, trixie, etc.)
+- `unstable`: Rolling pre-releases
+- `bookworm-stable`, `bookworm-unstable`: Debian 12 specific
+- `trixie-stable`, `trixie-unstable`: Debian 13 specific
+
+**Components**: `main`
+
+**Architectures**: `arm64`, `all`
+
+#### Integration Protocol
+
+**Communication**: GitHub repository dispatch
+
+**Event Type**: `package-updated`
+
+**Payload Format**:
+```json
+{
+  "repository": "hatlabs/cockpit-apt",
+  "distro": "any" | "bookworm" | "trixie",
+  "channel": "stable" | "unstable",
+  "component": "main"
+}
+```
+
+**Distribution Resolution**:
+```
+distro="any", channel="stable"    → stable
+distro="any", channel="unstable"  → unstable
+distro="bookworm", channel="stable" → bookworm-stable
+distro="trixie", channel="stable"   → trixie-stable
+```
+
+#### Package Download Process
+
+**Triggered Update Mode** (from package repositories):
+
+1. apt.hatlabs.fi receives `package-updated` dispatch
+2. Determines release to download based on channel:
+   - `unstable` channel → downloads from latest pre-release (by date)
+   - `stable` channel → downloads from tag "latest"
+3. Fetches release from GitHub API
+4. Downloads all `.deb` files from release assets
+5. Extracts package metadata (name, version, architecture)
+6. Copies to APT repository pool
+7. Generates Packages files for target distribution
+8. Signs Release file with GPG key
+9. Deploys to GitHub Pages
+
+**Note**: The apt.hatlabs.fi workflow now downloads from the latest pre-release for the unstable channel, as implemented in PRs #18 and #19.
+
+**Full Rebuild Mode** (scheduled daily):
+
+1. Discovers all repositories with `apt-package` topic
+2. Downloads latest stable releases from each
+3. Rebuilds all stable distributions
+4. Unstable distributions unchanged (require targeted updates)
+
+#### Security
+
+**Package Signing**:
+- All repository metadata signed with Hat Labs GPG key
+- Release file signed with detached signature (Release.gpg)
+- InRelease file includes embedded signature
+- Users verify with: `gpg --import hat-labs-apt-key.asc`
+
+**Package Trust Chain**:
+1. Store definition packages installed via APT
+2. APT packages signed by repository GPG key
+3. Repository GPG key trusted by user
+4. Standard Debian/Ubuntu trust model applies
+
+**Access Control**:
+- Dispatch events require `REPO_DISPATCH_PAT` token
+- Only authorized repositories can trigger updates
+- GitHub API token scoped to repository access only
+
+### Deployment Flow Diagram
+
+```
+Developer workflow:
+    ↓
+Code changes → PR → Review → Merge to main
+    ↓
+[Automatic Pre-Release Workflow]
+    ↓
+Build .deb → Create/update version-tagged pre-release
+    ↓
+[GitHub webhook: release.published event]
+    ↓
+Dispatch to apt.hatlabs.fi (channel: unstable)
+    ↓
+Package available at https://apt.hatlabs.fi/pool/main/
+    ↓
+Users on unstable channel: apt update && apt install cockpit-apt
+    ↓
+Testing and validation
+    ↓
+[Manual Action: Publish stable release]
+    ↓
+Dispatch to apt.hatlabs.fi (channel: stable)
+    ↓
+Package available in stable distribution
+    ↓
+Production users: apt update && apt upgrade
+```
+
+### Build Environment
+
+**Package Building**:
+- Ubuntu 22.04 runner (GitHub Actions)
+- Build dependencies: `dpkg-dev`, `debhelper`, `dh-python`, `python3-all`, `python3-apt`, `python3-hatchling`, `nodejs`, `npm`
+- Build command: `dpkg-buildpackage -b -uc -us` (binary package, unsigned)
+- Output: `cockpit-apt_VERSION_ARCH.deb`
+
+**Build Process**:
+1. Install Node.js and build frontend: `cd frontend && npm ci && npm run build`
+2. Install Python backend: `cd backend && pip3 install --prefix=/usr --root=debian/tmp .`
+3. Copy built files to package structure (debian/rules)
+4. Run dpkg-buildpackage to create .deb
+
+**Build Time**: ~2-3 minutes for complete package
+
+### Monitoring and Observability
+
+**Workflow Status**:
+- GitHub Actions tab shows all workflow runs
+- Failed builds visible in commit status
+- Email notifications for workflow failures
+
+**Release Tracking**:
+- All releases visible in GitHub Releases page
+- Pre-releases tagged with version numbers (e.g., v0.2.0) and marked as pre-release
+- Stable releases tagged with version numbers (e.g., v0.2.0) and published as regular releases
+
+**APT Repository Status**:
+- Repository index at https://apt.hatlabs.fi
+- Package lists per distribution
+- Last update timestamp visible
+
+### Failure Handling
+
+**Build Failures**:
+- Workflow fails, pre-release not created
+- Error visible in GitHub Actions logs
+- Developer notified via GitHub
+- Main branch remains deployable (last successful build)
+
+**Dispatch Failures**:
+- Token expiration: Update REPO_DISPATCH_PAT secret
+- Network issues: apt.hatlabs.fi workflow retries automatically
+- Package download failures: Logged in apt.hatlabs.fi workflow
+
+**Recovery Procedures**:
+1. **Failed build**: Fix issue, commit to main, automatic retry
+2. **Failed dispatch**: Re-run workflow from GitHub Actions UI
+3. **Corrupted release**: Delete release, push dummy commit to main
+4. **Missing package in APT repo**: Manual trigger of apt.hatlabs.fi workflow
+
 ## Error Handling Strategy
 
 ### Backend Error Categories

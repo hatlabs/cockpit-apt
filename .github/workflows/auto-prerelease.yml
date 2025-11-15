@@ -1,0 +1,198 @@
+name: Auto Pre-release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # Allow manual triggering for testing
+
+permissions:
+  contents: write
+
+jobs:
+  auto-prerelease:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Read version from debian/changelog
+      id: version
+      run: |
+        # Install devscripts for dpkg-parsechangelog
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq devscripts
+
+        VERSION=$(dpkg-parsechangelog -S Version)
+        # Strip Debian revision (everything after the last dash) for tag version
+        TAG_VERSION="${VERSION%%-*}"
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
+        echo "Version from debian/changelog: $VERSION (tag version: $TAG_VERSION)"
+
+    - name: Check if published release exists
+      id: check
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        TAG_VERSION="${{ steps.version.outputs.tag_version }}"
+
+        # Get the highest version from published (non-prerelease) releases
+        HIGHEST_STABLE=$(gh release list --limit 100 --json tagName,isPrerelease,isDraft \
+          --jq '.[] | select(.isDraft == false and .isPrerelease == false) | .tagName' | \
+          sed 's/^v//' | sort -V | tail -n1)
+
+        if [ -n "$HIGHEST_STABLE" ]; then
+          echo "Found highest stable release: v${HIGHEST_STABLE}"
+          # Compare versions using dpkg --compare-versions
+          # Strip Debian revision from VERSION for comparison (0.2.0-1 → 0.2.0)
+          if dpkg --compare-versions "${VERSION%%-*}" le "$HIGHEST_STABLE"; then
+            echo "action=skip" >> $GITHUB_OUTPUT
+            echo "⏭️  Stable release v${HIGHEST_STABLE} >= v${TAG_VERSION} - skipping pre-release"
+            exit 0
+          fi
+        fi
+
+        echo "action=create" >> $GITHUB_OUTPUT
+        echo "✅ No published release with same or higher version - will create pre-release v${TAG_VERSION}"
+      env:
+        GH_TOKEN: ${{ github.token }}
+
+    - name: Setup Node.js
+      if: steps.check.outputs.action == 'create'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'frontend/package-lock.json'
+
+    - name: Install build dependencies
+      if: steps.check.outputs.action == 'create'
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq \
+          dpkg-dev \
+          debhelper \
+          dh-python \
+          python3-all \
+          python3-apt \
+          python3-hatchling
+
+    - name: Build frontend
+      if: steps.check.outputs.action == 'create'
+      run: |
+        cd frontend
+        npm ci
+        npm run build
+        cd ..
+
+    - name: Build .deb package
+      if: steps.check.outputs.action == 'create'
+      run: |
+        # Build the package
+        dpkg-buildpackage -b -uc -us
+
+        # List generated packages
+        echo "📦 Generated packages:"
+        ls -lh ../*.deb
+
+    - name: Generate release notes
+      if: steps.check.outputs.action == 'create'
+      id: notes
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        TAG_VERSION="${{ steps.version.outputs.tag_version }}"
+        SHORT_SHA="${GITHUB_SHA:0:7}"
+
+        # Get the latest published (non-prerelease) release
+        LAST_TAG=$(gh release list --limit 100 --json tagName,isPrerelease,isDraft \
+          --jq '.[] | select(.isDraft == false and .isPrerelease == false) | .tagName' | head -n1)
+
+        if [ -n "$LAST_TAG" ]; then
+          echo "Generating changelog since $LAST_TAG"
+          CHANGELOG=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+        else
+          echo "No previous published releases found, using recent commits"
+          CHANGELOG=$(git log -10 --pretty=format:"- %s (%h)" --no-merges)
+        fi
+
+        # Create release notes
+        cat > release_notes.md <<EOF
+        ## Cockpit APT v${TAG_VERSION} (Pre-release)
+
+        ⚠️ **This is a pre-release build from the main branch. Use for testing only.**
+
+        **Build Information:**
+        - Commit: ${SHORT_SHA} (\`${GITHUB_SHA}\`)
+        - Built: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+
+        ### Recent Changes
+
+        ${CHANGELOG}
+
+        ### Installation
+
+        To install this pre-release:
+
+        \`\`\`bash
+        # Add Hat Labs repository (if not already added)
+        curl -fsSL https://apt.hatlabs.fi/hat-labs-apt-key.asc | sudo gpg --dearmor -o /usr/share/keyrings/hatlabs-apt-key.gpg
+
+        # Add unstable channel
+        echo "deb [signed-by=/usr/share/keyrings/hatlabs-apt-key.gpg] https://apt.hatlabs.fi unstable main" | sudo tee /etc/apt/sources.list.d/hatlabs-unstable.list
+
+        # Update and install
+        sudo apt update
+        sudo apt install cockpit-apt
+        \`\`\`
+
+        EOF
+
+        echo "Release notes created"
+      env:
+        GH_TOKEN: ${{ github.token }}
+
+    - name: Delete existing pre-release
+      if: steps.check.outputs.action == 'create'
+      run: |
+        TAG_VERSION="${{ steps.version.outputs.tag_version }}"
+
+        # Check if pre-release exists
+        if gh release view "v${TAG_VERSION}" &>/dev/null; then
+          IS_PRERELEASE=$(gh release view "v${TAG_VERSION}" --json isPrerelease --jq '.isPrerelease')
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            echo "🗑️  Deleting existing pre-release v${TAG_VERSION}"
+            gh release delete "v${TAG_VERSION}" --yes --cleanup-tag
+          fi
+        fi
+      env:
+        GH_TOKEN: ${{ github.token }}
+
+    - name: Create pre-release
+      if: steps.check.outputs.action == 'create'
+      run: |
+        TAG_VERSION="${{ steps.version.outputs.tag_version }}"
+
+        echo "📦 Creating pre-release v${TAG_VERSION}"
+        gh release create "v${TAG_VERSION}" \
+          --prerelease \
+          --title "v${TAG_VERSION} (Pre-release)" \
+          --notes-file release_notes.md \
+          ../*.deb
+
+        echo "✅ Pre-release created successfully"
+      env:
+        GH_TOKEN: ${{ github.token }}
+
+    - name: Report success
+      if: steps.check.outputs.action == 'create'
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        TAG_VERSION="${{ steps.version.outputs.tag_version }}"
+        echo "=== Auto Pre-release Complete ==="
+        echo "Package version: ${VERSION}"
+        echo "Release tag: v${TAG_VERSION}"
+        echo "Release URL: https://github.com/${{ github.repository }}/releases/tag/v${TAG_VERSION}"
+        echo ""
+        echo "ℹ️  Note: Creating this pre-release triggers the 'release.published' webhook event."
+        echo "   The release.yml workflow will automatically dispatch this to apt.hatlabs.fi unstable channel."
