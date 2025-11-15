@@ -34,3 +34,18 @@
   /* Fill viewport height at all viewport sizes (not just content height) */
   align-self: stretch !important;
 }
+
+/* Filter controls styling */
+.filter-controls {
+  display: flex;
+  gap: var(--pf-t--global--spacer--md);
+  align-items: center;
+  margin-bottom: var(--pf-t--global--spacer--md);
+  flex-wrap: wrap;
+}
+
+.store-toggle-group {
+  display: flex;
+  gap: var(--pf-t--global--spacer--sm);
+  align-items: center;
+}

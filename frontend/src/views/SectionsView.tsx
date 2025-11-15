@@ -15,7 +15,7 @@
  *   <SectionsView onNavigateToSection={(name) => navigateTo(`/sections/${name}`)} />
  */
 
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Title,
   Card,
@@ -48,6 +48,7 @@ import {
 } from "@patternfly/react-icons";
 import { ErrorAlert } from "../components/ErrorAlert";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
+import { useApp } from "../context/AppContext";
 import { useSections } from "../hooks/usePackages";
 
 export interface SectionsViewProps {
@@ -173,11 +174,54 @@ function getSectionIcon(sectionName: string): React.ReactNode {
 
 /**
  * Get a friendly display name for the base section (without prefix)
+ * Can be overridden by custom section metadata
  */
-function getSectionDisplayName(sectionName: string): string {
+function getSectionDisplayName(
+  sectionName: string,
+  customSections?: Array<{ section: string; label: string; description: string; icon?: string }>
+): string {
+  // Check if there's a custom label for this section
+  const customSection = customSections?.find((cs) => cs.section === sectionName);
+  if (customSection) {
+    return customSection.label;
+  }
+
   const { baseSection } = parseSectionName(sectionName);
   // Capitalize first letter
   return baseSection.charAt(0).toUpperCase() + baseSection.slice(1);
+}
+
+/**
+ * Get the icon for a section, preferring custom icon if available
+ */
+function getSectionIconWithCustom(
+  sectionName: string,
+  customSections?: Array<{ section: string; label: string; description: string; icon?: string }>
+): React.ReactNode {
+  // Check if there's a custom icon for this section
+  const customSection = customSections?.find((cs) => cs.section === sectionName);
+  if (customSection?.icon) {
+    // For custom icons, we could support URLs or icon names
+    // For now, use the default icon mapping but mark it as custom
+    return (
+      <div style={{ position: "relative", display: "inline-block" }}>
+        {getSectionIcon(sectionName)}
+        <Badge
+          isRead
+          style={{
+            position: "absolute",
+            top: "-0.25rem",
+            right: "-0.25rem",
+            fontSize: "0.6rem",
+          }}
+        >
+          Custom
+        </Badge>
+      </div>
+    );
+  }
+
+  return getSectionIcon(sectionName);
 }
 
 /**
@@ -217,7 +261,17 @@ function sortSections(
 }
 
 export const SectionsView: React.FC<SectionsViewProps> = ({ onNavigateToSection }) => {
+  const { state } = useApp();
   const { data: sections, loading, error, refetch } = useSections();
+
+  // Get custom sections from active store
+  const customSections = useMemo(() => {
+    if (!state.activeStore || !state.stores.length) {
+      return undefined;
+    }
+    const activeStore = state.stores.find((s) => s.id === state.activeStore);
+    return activeStore?.custom_sections;
+  }, [state.activeStore, state.stores]);
 
   // Sort sections by archive area and base name
   const sortedSections = sections ? sortSections(sections) : [];
@@ -267,9 +321,11 @@ export const SectionsView: React.FC<SectionsViewProps> = ({ onNavigateToSection 
                     style={{ height: "100%" }}
                     tabIndex={0}
                     role="button"
-                    aria-label={`View ${section.count} packages in ${prefix ? `${getArchiveLabel(prefix)} ` : ""}${getSectionDisplayName(section.name)} section`}
+                    aria-label={`View ${section.count} packages in ${prefix ? `${getArchiveLabel(prefix)} ` : ""}${getSectionDisplayName(section.name, customSections)} section`}
                   >
-                    <CardHeader>{getSectionIcon(section.name)}</CardHeader>
+                    <CardHeader>
+                      {getSectionIconWithCustom(section.name, customSections)}
+                    </CardHeader>
 
                     <CardTitle>
                       {prefix && (
@@ -284,7 +340,7 @@ export const SectionsView: React.FC<SectionsViewProps> = ({ onNavigateToSection 
                           {getArchiveLabel(prefix)}
                         </div>
                       )}
-                      {getSectionDisplayName(section.name)}
+                      {getSectionDisplayName(section.name, customSections)}
                     </CardTitle>
 
                     <CardBody>
