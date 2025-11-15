@@ -44,6 +44,7 @@ import { ArrowLeftIcon, CheckCircleIcon, ExternalLinkAltIcon } from "@patternfly
 import React, { useEffect, useState } from "react";
 import { ErrorAlert } from "../components/ErrorAlert";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
+import { useApp } from "../context/AppContext";
 import { usePackageDetails } from "../hooks/usePackages";
 import { getPackageFiles, installPackage, removePackage } from "../lib/api";
 
@@ -67,6 +68,7 @@ export const PackageDetailsView: React.FC<PackageDetailsViewProps> = ({
   onRemove,
   onBack,
 }) => {
+  const { actions } = useApp();
   const [activeTab, setActiveTab] = useState<string | number>(0);
   const [operating, setOperating] = useState(false);
   const [operationProgress, setOperationProgress] = useState<{
@@ -125,6 +127,13 @@ export const PackageDetailsView: React.FC<PackageDetailsViewProps> = ({
       // Refetch to update installed status (silently, without loading skeleton)
       await refetch();
 
+      // Reload context packages to update global state
+      try {
+        await actions.loadPackages();
+      } catch (e) {
+        console.warn("Failed to reload global package state:", e);
+      }
+
       // Also call the optional parent callback for any side effects
       if (onInstall) {
         try {
@@ -157,6 +166,13 @@ export const PackageDetailsView: React.FC<PackageDetailsViewProps> = ({
 
       // Refetch to update installed status (silently, without loading skeleton)
       await refetch();
+
+      // Reload context packages to update global state
+      try {
+        await actions.loadPackages();
+      } catch (e) {
+        console.warn("Failed to reload global package state:", e);
+      }
 
       // Also call the optional parent callback for any side effects
       if (onRemove) {

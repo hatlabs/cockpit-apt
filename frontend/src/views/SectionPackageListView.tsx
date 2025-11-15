@@ -30,6 +30,7 @@ import { CubesIcon, FilterIcon } from "@patternfly/react-icons";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
 import { useEffect, useState } from "react";
 import { ErrorAlert } from "../components/ErrorAlert";
+import { useApp } from "../context/AppContext";
 import { listPackagesBySection } from "../lib/api";
 import { Package } from "../lib/types";
 
@@ -50,6 +51,7 @@ export function SectionPackageListView({
   onInstall,
   onRemove,
 }: SectionPackageListViewProps) {
+  const { actions } = useApp();
   const [packages, setPackages] = useState<Package[]>([]);
   const [filteredPackages, setFilteredPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,7 +105,13 @@ export function SectionPackageListView({
       // Reload packages after action
       await loadPackages();
     } catch (err) {
-      console.error("Action failed:", err);
+      console.error("Local reload failed:", err);
+    }
+    try {
+      // Also reload context packages to update global state
+      await actions.loadPackages();
+    } catch (err) {
+      console.error("Global state reload failed:", err);
     } finally {
       setActioningPackage(null);
     }
