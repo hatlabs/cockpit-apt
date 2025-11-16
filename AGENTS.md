@@ -151,7 +151,7 @@ docs/                             # Documentation
 
 1. **EXPLORE** - Read relevant code WITHOUT writing any code
    - Use `Task tool with subagent_type=Explore` for complex navigation
-   - Reference `/docs/SPEC.md` and `/docs/ARCHITECTURE.md`
+   - Reference `docs/SPEC.md` and `docs/ARCHITECTURE.md`
 2. **PLAN** - Create implementation approach
    - Use `think hard` for planning
    - Document the plan before coding
