@@ -3,13 +3,34 @@
  */
 
 /**
- * Custom section metadata for a store
+ * Custom section metadata for a store (deprecated - use category_metadata)
  */
 export interface CustomSection {
   section: string;
   label: string;
   description: string;
   icon?: string;
+}
+
+/**
+ * Category metadata for a store (enhances auto-discovered categories)
+ */
+export interface CategoryMetadata {
+  id: string;
+  label: string;
+  icon?: string; // PatternFly icon name OR file path
+  description?: string;
+}
+
+/**
+ * Category information (auto-discovered from package tags)
+ */
+export interface Category {
+  id: string;
+  label: string;
+  icon?: string; // PatternFly icon name OR file path
+  description?: string;
+  count: number; // Package count
 }
 
 /**
@@ -22,7 +43,8 @@ export interface Store {
   icon?: string;
   repositories?: string[];
   debtags?: string[];
-  custom_sections?: CustomSection[];
+  custom_sections?: CustomSection[]; // Deprecated - kept for backward compatibility
+  category_metadata?: CategoryMetadata[]; // Optional metadata for categories
 }
 
 /**
