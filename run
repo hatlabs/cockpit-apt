@@ -159,8 +159,9 @@ function debian:build {
   #@ Category: Debian
   echo "📦 Building Debian package..."
   devtools \
-    bash -c "apt-get update -qq && apt-get install -y -qq debhelper-compat=13 python3-all python3-hatchling dh-python >/dev/null 2>&1 && cd /workspace && dpkg-buildpackage -us -uc -b"
+    bash -c "apt-get update -qq && apt-get install -y -qq debhelper-compat=13 python3-all python3-hatchling dh-python >/dev/null 2>&1 && cd /workspace && dpkg-buildpackage -us -uc -b && mv ../*.deb ../*.changes ../*.buildinfo /workspace 2>/dev/null || true"
   echo "✅ Debian package built successfully"
+  ls -lh cockpit-apt*.deb 2>/dev/null | tail -1 || echo "⚠️  .deb file location:"
 }
 
 ################################################################################
