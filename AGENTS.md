@@ -139,7 +139,7 @@ docs/                             # Documentation
 
 ## Issue Creation & Implementation
 
-**MANDATORY:** All GitHub issues must require following `docs/IMPLEMENTATION_CHECKLIST.md` during implementation. Include this requirement in the issue body when creating issues.
+**MANDATORY:** All GitHub issues must require following `halos-distro/docs/IMPLEMENTATION_CHECKLIST.md` during implementation. Include this requirement in the issue body when creating issues.
 
 ## Development Workflow
 
