@@ -221,7 +221,7 @@ export async function listCategories(
   storeId?: string,
   useCache: boolean = true
 ): Promise<Category[]> {
-  const cacheKey = storeId ? `categories:${storeId}` : "categories";
+  const cacheKey = storeId ? `categories:${storeId}` : "categories:all";
 
   // Check cache
   if (useCache) {
@@ -260,8 +260,8 @@ export async function listPackagesByCategory(
   useCache: boolean = true
 ): Promise<Package[]> {
   const cacheKey = storeId
-    ? `category:${storeId}:${categoryId}`
-    : `category:${categoryId}`;
+    ? `categories:${storeId}:packages:${categoryId}`
+    : `categories:all:packages:${categoryId}`;
 
   // Check cache
   if (useCache) {
