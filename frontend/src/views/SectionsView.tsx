@@ -29,8 +29,11 @@ import {
 } from "@patternfly/react-core";
 import {
   BookIcon,
+  ChartAreaIcon,
+  ChartLineIcon,
   CodeIcon,
   CogIcon,
+  ConnectedIcon,
   CubesIcon,
   DatabaseIcon,
   DesktopIcon,
@@ -40,17 +43,19 @@ import {
   GlobeIcon,
   ImageIcon,
   LayerGroupIcon,
+  MapIcon,
+  MapMarkerIcon,
   NetworkWiredIcon,
   ServerIcon,
   TerminalIcon,
   VolumeUpIcon,
 } from "@patternfly/react-icons";
 import React, { useMemo } from "react";
-import type { CustomSection } from "../api/types";
+import type { Category, CustomSection } from "../api/types";
 import { ErrorAlert } from "../components/ErrorAlert";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { useApp } from "../context/AppContext";
-import { useSections } from "../hooks/usePackages";
+import { useCategories, useSections } from "../hooks/usePackages";
 
 export interface SectionsViewProps {
   /** Callback when user clicks on a section to view packages */
@@ -162,6 +167,28 @@ const SECTION_ICON_MAP: Record<string, React.ComponentType> = {
 };
 
 /**
+ * Mapping from category IDs to PatternFly icons
+ * Used for marine and other custom store categories
+ */
+const CATEGORY_ICON_MAP: Record<string, React.ComponentType> = {
+  // Marine categories
+  navigation: MapIcon,
+  chartplotters: MapMarkerIcon,
+  monitoring: ChartLineIcon,
+  communication: ConnectedIcon,
+  visualization: ChartAreaIcon,
+
+  // Common categories that might be used by other stores
+  development: CodeIcon,
+  database: DatabaseIcon,
+  web: GlobeIcon,
+  network: NetworkWiredIcon,
+  system: CogIcon,
+  multimedia: VolumeUpIcon,
+  graphics: ImageIcon,
+};
+
+/**
  * Get an appropriate icon for a section based on its base name (without prefix)
  * Falls back to FolderIcon for unmapped sections
  */
@@ -225,6 +252,44 @@ function getArchiveLabel(prefix: string): string {
 }
 
 /**
+ * Render an icon for a category with hybrid support
+ * Handles both PatternFly icon names and file paths
+ *
+ * @param iconName PatternFly icon name (e.g., "MapIcon") OR file path (e.g., "/usr/share/...")
+ * @param categoryId Category ID for fallback icon selection
+ * @returns Icon React node
+ */
+function renderCategoryIcon(iconName?: string, categoryId?: string): React.ReactNode {
+  // If icon is a file path (starts with /), render as image
+  if (iconName && iconName.startsWith("/")) {
+    return (
+      <img
+        src={iconName}
+        alt=""
+        style={{ width: "2rem", height: "2rem", objectFit: "contain" }}
+      />
+    );
+  }
+
+  // If icon is a PatternFly icon name, try to use the mapped component
+  // Otherwise fall back to category-based icon or FolderIcon
+  let IconComponent: React.ComponentType;
+
+  if (categoryId && CATEGORY_ICON_MAP[categoryId]) {
+    IconComponent = CATEGORY_ICON_MAP[categoryId];
+  } else {
+    IconComponent = FolderIcon;
+  }
+
+  // Wrap in div for styling since React.ComponentType doesn't guarantee style prop
+  return (
+    <div style={{ fontSize: "2rem", color: "var(--pf-v5-global--primary-color--100)" }}>
+      <IconComponent />
+    </div>
+  );
+}
+
+/**
  * Sort sections by archive area priority, then alphabetically by base section name
  * Main sections come first, then contrib, then non-free variants
  */
@@ -248,21 +313,58 @@ function sortSections(
   });
 }
 
+/**
+ * Sort categories alphabetically by label
+ */
+function sortCategories(categories: Category[]): Category[] {
+  return [...categories].sort((a, b) => a.label.localeCompare(b.label));
+}
+
 export const SectionsView: React.FC<SectionsViewProps> = ({ onNavigateToSection }) => {
   const { state } = useApp();
-  const { data: sections, loading, error, refetch } = useSections();
 
-  // Get custom sections from active store
-  const customSections = useMemo(() => {
+  // Determine if we should show categories or sections
+  // Show categories if there's an active store with category_metadata
+  const { showCategories, activeStore } = useMemo(() => {
     if (!state.activeStore || !state.stores.length) {
-      return undefined;
+      return { showCategories: false, activeStore: undefined };
     }
-    const activeStore = state.stores.find((s) => s.id === state.activeStore);
-    return activeStore?.custom_sections;
+    const store = state.stores.find((s) => s.id === state.activeStore);
+    const hasCategories = store?.category_metadata && store.category_metadata.length > 0;
+    return { showCategories: hasCategories, activeStore: store };
   }, [state.activeStore, state.stores]);
 
-  // Sort sections by archive area and base name
+  // Conditionally fetch sections or categories
+  const {
+    data: sections,
+    loading: sectionsLoading,
+    error: sectionsError,
+    refetch: refetchSections,
+  } = useSections(!showCategories);
+
+  const {
+    data: categories,
+    loading: categoriesLoading,
+    error: categoriesError,
+    refetch: refetchCategories,
+  } = useCategories(showCategories && state.activeStore ? state.activeStore : undefined, showCategories);
+
+  // Unified loading/error/refetch based on which mode we're in
+  const loading = showCategories ? categoriesLoading : sectionsLoading;
+  const error = showCategories ? categoriesError : sectionsError;
+  const refetch = showCategories ? refetchCategories : refetchSections;
+
+  // Get custom sections from active store (for sections mode backward compat)
+  const customSections = useMemo(() => {
+    if (showCategories || !activeStore) {
+      return undefined;
+    }
+    return activeStore.custom_sections;
+  }, [showCategories, activeStore]);
+
+  // Sort data based on mode
   const sortedSections = sections ? sortSections(sections) : [];
+  const sortedCategories = categories ? sortCategories(categories) : [];
 
   const handleSectionClick = (sectionName: string) => {
     if (onNavigateToSection) {
@@ -270,23 +372,86 @@ export const SectionsView: React.FC<SectionsViewProps> = ({ onNavigateToSection 
     }
   };
 
+  // Determine what to display based on mode
+  const itemCount = showCategories ? sortedCategories.length : sortedSections.length;
+  const heading = showCategories ? "Browse by Category" : "Browse by Section";
+  const emptyMessage = showCategories
+    ? "No categories found for this store."
+    : "No package sections are available in the APT cache.";
+
   return (
     <>
       <Title headingLevel="h1" size="2xl" style={{ marginBottom: "1.5rem" }}>
-        Browse by Section
+        {heading}
       </Title>
 
       {error && <ErrorAlert error={error} onRetry={refetch} style={{ marginBottom: "1.5rem" }} />}
 
       {loading && <LoadingSkeleton variant="card" rows={8} />}
 
-      {!loading && !error && sortedSections.length === 0 && (
-        <EmptyState icon={CubesIcon} titleText="No sections found" headingLevel="h4">
-          <EmptyStateBody>No package sections are available in the APT cache.</EmptyStateBody>
+      {!loading && !error && itemCount === 0 && (
+        <EmptyState icon={CubesIcon} titleText={`No ${showCategories ? "categories" : "sections"} found`} headingLevel="h4">
+          <EmptyStateBody>{emptyMessage}</EmptyStateBody>
         </EmptyState>
       )}
 
-      {!loading && !error && sortedSections.length > 0 && (
+      {!loading && !error && itemCount > 0 && showCategories && (
+        <>
+          <div style={{ marginBottom: "1rem", color: "var(--pf-v5-global--Color--200)" }}>
+            {sortedCategories.length} categor{sortedCategories.length !== 1 ? "ies" : "y"} available
+          </div>
+
+          <Grid hasGutter>
+            {sortedCategories.map((category) => {
+              const icon = renderCategoryIcon(category.icon, category.id);
+
+              return (
+                <GridItem key={category.id} sm={6} md={4} lg={3} xl={2}>
+                  <Card
+                    isClickable
+                    onClick={() => onNavigateToSection && onNavigateToSection(category.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onNavigateToSection && onNavigateToSection(category.id);
+                      }
+                    }}
+                    style={{ height: "100%" }}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`View ${category.count} packages in ${category.label} category`}
+                  >
+                    <CardHeader>{icon}</CardHeader>
+
+                    <CardTitle>{category.label}</CardTitle>
+
+                    <CardBody>
+                      <div>
+                        <Badge isRead>
+                          {category.count} package{category.count !== 1 ? "s" : ""}
+                        </Badge>
+                      </div>
+                      {category.description && (
+                        <div
+                          style={{
+                            marginTop: "0.5rem",
+                            fontSize: "0.875rem",
+                            color: "var(--pf-v5-global--Color--200)",
+                          }}
+                        >
+                          {category.description}
+                        </div>
+                      )}
+                    </CardBody>
+                  </Card>
+                </GridItem>
+              );
+            })}
+          </Grid>
+        </>
+      )}
+
+      {!loading && !error && itemCount > 0 && !showCategories && (
         <>
           <div style={{ marginBottom: "1rem", color: "var(--pf-v5-global--Color--200)" }}>
             {sortedSections.length} section{sortedSections.length !== 1 ? "s" : ""} available
