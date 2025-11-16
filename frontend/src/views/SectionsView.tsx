@@ -17,10 +17,6 @@
 
 import {
   Badge,
-  Card,
-  CardBody,
-  CardHeader,
-  CardTitle,
   EmptyState,
   EmptyStateBody,
   Grid,
@@ -51,9 +47,11 @@ import {
   VolumeUpIcon,
 } from "@patternfly/react-icons";
 import React, { useMemo } from "react";
-import type { Category, CustomSection } from "../api/types";
+import type { Category, CustomSection, Store } from "../api/types";
+import { CategoryCard } from "../components/CategoryCard";
 import { ErrorAlert } from "../components/ErrorAlert";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
+import { SectionCard } from "../components/SectionCard";
 import { useApp } from "../context/AppContext";
 import { useCategories, useSections } from "../hooks/usePackages";
 
@@ -271,13 +269,19 @@ function renderCategoryIcon(iconName?: string, categoryId?: string): React.React
     );
   }
 
-  // If icon is a PatternFly icon name, try to use the mapped component
-  // Otherwise fall back to category-based icon or FolderIcon
+  // Determine icon component with proper fallback priority
   let IconComponent: React.ComponentType;
 
-  if (categoryId && CATEGORY_ICON_MAP[categoryId]) {
+  // Try iconName first (for future PatternFly icon name support)
+  if (iconName && CATEGORY_ICON_MAP[iconName]) {
+    IconComponent = CATEGORY_ICON_MAP[iconName];
+  }
+  // Fall back to categoryId lookup
+  else if (categoryId && CATEGORY_ICON_MAP[categoryId]) {
     IconComponent = CATEGORY_ICON_MAP[categoryId];
-  } else {
+  }
+  // Final fallback to default icon
+  else {
     IconComponent = FolderIcon;
   }
 
@@ -320,18 +324,29 @@ function sortCategories(categories: Category[]): Category[] {
   return [...categories].sort((a, b) => a.label.localeCompare(b.label));
 }
 
+/**
+ * Determines if a store should display categories mode
+ * Show categories mode if:
+ * - The store has category_metadata configured
+ * - The category_metadata array is not empty
+ */
+function shouldShowCategories(store: Store | undefined): boolean {
+  return Boolean(store?.category_metadata && store.category_metadata.length > 0);
+}
+
 export const SectionsView: React.FC<SectionsViewProps> = ({ onNavigateToSection }) => {
   const { state } = useApp();
 
-  // Determine if we should show categories or sections
-  // Show categories if there's an active store with category_metadata
+  // Determine if we should show categories or sections based on active store
   const { showCategories, activeStore } = useMemo(() => {
     if (!state.activeStore || !state.stores.length) {
       return { showCategories: false, activeStore: undefined };
     }
     const store = state.stores.find((s) => s.id === state.activeStore);
-    const hasCategories = store?.category_metadata && store.category_metadata.length > 0;
-    return { showCategories: hasCategories, activeStore: store };
+    return {
+      showCategories: shouldShowCategories(store),
+      activeStore: store,
+    };
   }, [state.activeStore, state.stores]);
 
   // Conditionally fetch sections or categories
@@ -395,131 +410,47 @@ export const SectionsView: React.FC<SectionsViewProps> = ({ onNavigateToSection 
         </EmptyState>
       )}
 
-      {!loading && !error && itemCount > 0 && showCategories && (
+      {!loading && !error && itemCount > 0 && (
         <>
           <div style={{ marginBottom: "1rem", color: "var(--pf-v5-global--Color--200)" }}>
-            {sortedCategories.length} categor{sortedCategories.length !== 1 ? "ies" : "y"} available
+            {itemCount} {showCategories ? "categor" : "section"}
+            {itemCount !== 1 ? (showCategories ? "ies" : "s") : showCategories ? "y" : ""} available
           </div>
 
           <Grid hasGutter>
-            {sortedCategories.map((category) => {
-              const icon = renderCategoryIcon(category.icon, category.id);
+            {showCategories
+              ? sortedCategories.map((category) => {
+                  const icon = renderCategoryIcon(category.icon, category.id);
+                  return (
+                    <GridItem key={category.id} sm={6} md={4} lg={3} xl={2}>
+                      <CategoryCard
+                        category={category}
+                        icon={icon}
+                        onNavigate={(id) => onNavigateToSection && onNavigateToSection(id)}
+                      />
+                    </GridItem>
+                  );
+                })
+              : sortedSections.map((section) => {
+                  const { prefix } = parseSectionName(section.name);
+                  const customSection = customSections?.find((cs) => cs.section === section.name);
+                  const displayName = getSectionDisplayName(section.name, customSection);
+                  const icon = getSectionIconWithCustom(section.name, customSection);
 
-              return (
-                <GridItem key={category.id} sm={6} md={4} lg={3} xl={2}>
-                  <Card
-                    isClickable
-                    onClick={() => onNavigateToSection && onNavigateToSection(category.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        onNavigateToSection && onNavigateToSection(category.id);
-                      }
-                    }}
-                    style={{ height: "100%" }}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={`View ${category.count} packages in ${category.label} category`}
-                  >
-                    <CardHeader>{icon}</CardHeader>
-
-                    <CardTitle>{category.label}</CardTitle>
-
-                    <CardBody>
-                      <div>
-                        <Badge isRead>
-                          {category.count} package{category.count !== 1 ? "s" : ""}
-                        </Badge>
-                      </div>
-                      {category.description && (
-                        <div
-                          style={{
-                            marginTop: "0.5rem",
-                            fontSize: "0.875rem",
-                            color: "var(--pf-v5-global--Color--200)",
-                          }}
-                        >
-                          {category.description}
-                        </div>
-                      )}
-                    </CardBody>
-                  </Card>
-                </GridItem>
-              );
-            })}
-          </Grid>
-        </>
-      )}
-
-      {!loading && !error && itemCount > 0 && !showCategories && (
-        <>
-          <div style={{ marginBottom: "1rem", color: "var(--pf-v5-global--Color--200)" }}>
-            {sortedSections.length} section{sortedSections.length !== 1 ? "s" : ""} available
-          </div>
-
-          <Grid hasGutter>
-            {sortedSections.map((section) => {
-              const { prefix } = parseSectionName(section.name);
-              const customSection = customSections?.find((cs) => cs.section === section.name);
-              const displayName = getSectionDisplayName(section.name, customSection);
-              const icon = getSectionIconWithCustom(section.name, customSection);
-
-              return (
-                <GridItem key={section.name} sm={6} md={4} lg={3} xl={2}>
-                  <Card
-                    isClickable
-                    onClick={() => handleSectionClick(section.name)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleSectionClick(section.name);
-                      }
-                    }}
-                    style={{ height: "100%" }}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={`View ${section.count} packages in ${prefix ? `${getArchiveLabel(prefix)} ` : ""}${displayName} section`}
-                  >
-                    <CardHeader>{icon}</CardHeader>
-
-                    <CardTitle>
-                      {prefix && (
-                        <div
-                          style={{
-                            fontSize: "0.75rem",
-                            fontWeight: "normal",
-                            color: "var(--pf-v5-global--Color--200)",
-                            marginBottom: "0.25rem",
-                          }}
-                        >
-                          {getArchiveLabel(prefix)}
-                        </div>
-                      )}
-                      {displayName}
-                    </CardTitle>
-
-                    <CardBody>
-                      <div>
-                        <Badge isRead>
-                          {section.count} package{section.count !== 1 ? "s" : ""}
-                        </Badge>
-                      </div>
-                      {customSection?.description && (
-                        <div
-                          style={{
-                            marginTop: "0.5rem",
-                            fontSize: "0.875rem",
-                            color: "var(--pf-v5-global--Color--200)",
-                          }}
-                        >
-                          {customSection.description}
-                        </div>
-                      )}
-                    </CardBody>
-                  </Card>
-                </GridItem>
-              );
-            })}
+                  return (
+                    <GridItem key={section.name} sm={6} md={4} lg={3} xl={2}>
+                      <SectionCard
+                        section={section}
+                        icon={icon}
+                        customSection={customSection}
+                        archivePrefix={prefix}
+                        archiveLabel={prefix ? getArchiveLabel(prefix) : undefined}
+                        displayName={displayName}
+                        onNavigate={handleSectionClick}
+                      />
+                    </GridItem>
+                  );
+                })}
           </Grid>
         </>
       )}
