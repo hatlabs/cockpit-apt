@@ -44,13 +44,17 @@ class StoreFilter:
 
 
 @dataclass
-class CustomSection:
-    """Custom section metadata for a store."""
+class CategoryMetadata:
+    """Optional metadata for enhancing category display.
 
-    section: str
-    label: str
-    description: str
-    icon: str | None = None
+    Categories are auto-discovered from package category:: tags.
+    This metadata provides optional enhancements for display purposes.
+    """
+
+    id: str  # category ID (e.g., "navigation")
+    label: str  # Display name (e.g., "Navigation & Charts")
+    icon: str | None = None  # PatternFly icon name OR file path
+    description: str | None = None  # Category description
 
 
 @dataclass
@@ -63,7 +67,7 @@ class StoreConfig:
     filters: StoreFilter
     icon: str | None = None
     banner: str | None = None
-    custom_sections: list[CustomSection] | None = None
+    category_metadata: list[CategoryMetadata] | None = None
 
     def __post_init__(self) -> None:
         """Validate store ID format."""
@@ -118,39 +122,39 @@ def _parse_filters(filters_dict: dict[str, Any]) -> StoreFilter:
     )
 
 
-def _parse_custom_sections(
-    sections_list: list[dict[str, Any]] | None,
-) -> list[CustomSection] | None:
-    """Parse custom section metadata.
+def _parse_category_metadata(
+    metadata_list: list[dict[str, Any]] | None,
+) -> list[CategoryMetadata] | None:
+    """Parse category metadata for enhanced display.
 
     Args:
-        sections_list: List of custom section dictionaries
+        metadata_list: List of category metadata dictionaries
 
     Returns:
-        List of CustomSection objects or None
+        List of CategoryMetadata objects or None
     """
-    if not sections_list:
+    if not metadata_list:
         return None
 
-    custom_sections = []
-    for section_dict in sections_list:
-        if not all(k in section_dict for k in ["section", "label", "description"]):
+    category_metadata = []
+    for meta_dict in metadata_list:
+        if not all(k in meta_dict for k in ["id", "label"]):
             logger.warning(
-                "Skipping invalid custom section (missing required fields): %s",
-                section_dict,
+                "Skipping invalid category metadata (missing required fields): %s",
+                meta_dict,
             )
             continue
 
-        custom_sections.append(
-            CustomSection(
-                section=section_dict["section"],
-                label=section_dict["label"],
-                description=section_dict["description"],
-                icon=section_dict.get("icon"),
+        category_metadata.append(
+            CategoryMetadata(
+                id=meta_dict["id"],
+                label=meta_dict["label"],
+                icon=meta_dict.get("icon"),
+                description=meta_dict.get("description"),
             )
         )
 
-    return custom_sections if custom_sections else None
+    return category_metadata if category_metadata else None
 
 
 def _load_store_config(filepath: Path) -> StoreConfig | None:
@@ -176,8 +180,8 @@ def _load_store_config(filepath: Path) -> StoreConfig | None:
         # Parse filters
         filters = _parse_filters(data["filters"])
 
-        # Parse custom sections if present
-        custom_sections = _parse_custom_sections(data.get("custom_sections"))
+        # Parse category metadata if present
+        category_metadata = _parse_category_metadata(data.get("category_metadata"))
 
         return StoreConfig(
             id=data["id"],
@@ -186,7 +190,7 @@ def _load_store_config(filepath: Path) -> StoreConfig | None:
             filters=filters,
             icon=data.get("icon"),
             banner=data.get("banner"),
-            custom_sections=custom_sections,
+            category_metadata=category_metadata,
         )
 
     except yaml.YAMLError as e:
