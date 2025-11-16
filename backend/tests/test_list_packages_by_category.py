@@ -2,7 +2,6 @@
 Unit tests for list-packages-by-category command.
 """
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
