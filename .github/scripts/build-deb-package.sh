@@ -1,8 +1,15 @@
 #!/bin/bash
 # Build Debian package (.deb)
-# Assumes build dependencies are already installed
+# Installs build dependencies and builds the package
 
 set -e
+
+echo "Installing build dependencies..."
+sudo apt-get update -qq
+sudo apt-get install -y -qq \
+  build-essential dpkg-dev debhelper dh-python \
+  python3-all python3-apt python3-hatchling \
+  nodejs npm
 
 echo "Building Debian package..."
 
