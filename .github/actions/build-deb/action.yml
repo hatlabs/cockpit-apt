@@ -23,16 +23,10 @@ runs:
           --file Dockerfile.debtools \
           --tag debtools:latest \
           --cache-from type=local,src=/tmp/.buildx-cache \
-          --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
+          --cache-to type=local,dest=/tmp/.buildx-cache,mode=max \
           --load \
           .
         cd ..
-
-    - name: Move cache
-      shell: bash
-      run: |
-        rm -rf /tmp/.buildx-cache
-        mv /tmp/.buildx-cache-new /tmp/.buildx-cache || true
 
     - name: Build Debian package
       shell: bash
