@@ -147,7 +147,7 @@ cd halos-distro
 ```
 
 See `halos-distro/docs/` for development workflows:
-- `HUMAN_DEVELOPMENT_GUIDANCE.md` - Quick start guide
+- `LIFE_WITH_CLAUDE.md` - Quick start guide
 - `IMPLEMENTATION_CHECKLIST.md` - Development checklist
 - `DEVELOPMENT_WORKFLOW.md` - Detailed workflows
 
@@ -597,4 +597,3 @@ GNU Lesser General Public License v2.1 - see [LICENSE](LICENSE) file for details
 ---
 
 Made with ❤️ by Hat Labs • Part of the [HaLOS](https://github.com/hatlabs/halos-distro) ecosystem
-
