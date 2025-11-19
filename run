@@ -51,6 +51,35 @@ function build-deb {
 }
 
 ################################################################################
+# Backend proxy
+
+function backend {
+  #@ Proxy to backend run script
+  #@ Category: Backend
+  echo "➡️  Running backend command in ./backend/run"
+  cd backend
+  ./run "$@"
+}
+
+function test {
+  #@ Run backend tests (proxy)
+  #@ Category: Backend
+  backend test "$@"
+}
+
+function lint {
+  #@ Run backend linter (proxy)
+  #@ Category: Backend
+  backend lint
+}
+
+function typecheck {
+  #@ Run backend type checker (proxy)
+  #@ Category: Backend
+  backend typecheck
+}
+
+################################################################################
 # Frontend proxy
 
 function frontend {
@@ -117,6 +146,44 @@ function ci-lint {
   frontend lint
   frontend typecheck
   echo "✅ All linters passed"
+}
+
+################################################################################
+# Version Management Commands
+
+function bumpversion {
+  #@ Bump version using bumpversion tool (patch|minor|major)
+  #@ Category: Version
+  local BUMP_TYPE="${1:-}"
+
+  if [[ -z "$BUMP_TYPE" ]]; then
+    echo "Error: version bump type required"
+    echo "Usage: ./run bumpversion [patch|minor|major]"
+    exit 1
+  fi
+
+  if [[ ! "$BUMP_TYPE" =~ ^(patch|minor|major)$ ]]; then
+    echo "Error: invalid bump type '$BUMP_TYPE'"
+    echo "Usage: ./run bumpversion [patch|minor|major]"
+    exit 1
+  fi
+
+  echo "🔢 Bumping $BUMP_TYPE version..."
+
+  # Check if bumpversion is installed
+  if ! command -v bumpversion &> /dev/null; then
+    echo "Error: bumpversion not installed"
+    echo "Install with: pip install bump2version"
+    exit 1
+  fi
+
+  # Run bumpversion
+  bumpversion "$BUMP_TYPE"
+
+  echo "✅ Version bumped successfully"
+  echo "📝 Remember to commit the version changes:"
+  echo "   git add VERSION backend/pyproject.toml frontend/package.json"
+  echo "   git commit -m \"chore: bump version to \$(cat VERSION)\""
 }
 
 ################################################################################
