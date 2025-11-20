@@ -51,7 +51,7 @@ jobs:
         id: check_assets
         run: |
           STABLE_TAG="${{ steps.version.outputs.stable_tag }}"
-          ASSET_COUNT=$(gh release view "$STABLE_TAG" --json assets --jq '.assets | length')
+          ASSET_COUNT=$(gh release view "$STABLE_TAG" --repo ${{ github.repository }} --json assets --jq '.assets | length')
 
           if [ "$ASSET_COUNT" -gt 0 ]; then
             echo "has_assets=true" >> $GITHUB_OUTPUT
