@@ -69,7 +69,7 @@ jobs:
           PRERELEASE_TAG="${{ steps.version.outputs.prerelease_tag }}"
 
           echo "📥 Downloading .deb from pre-release $PRERELEASE_TAG"
-          gh release download "$PRERELEASE_TAG" --pattern "*.deb"
+          gh release download "$PRERELEASE_TAG" --pattern "*.deb" --repo ${{ github.repository }}
 
           if ! ls *.deb 1> /dev/null 2>&1; then
             echo "❌ Error: No .deb files downloaded from pre-release"
@@ -87,7 +87,7 @@ jobs:
           STABLE_TAG="${{ steps.version.outputs.stable_tag }}"
 
           echo "📤 Uploading .deb to stable release $STABLE_TAG"
-          gh release upload "$STABLE_TAG" *.deb --clobber
+          gh release upload "$STABLE_TAG" *.deb --clobber --repo ${{ github.repository }}
 
           echo "✅ Assets uploaded successfully"
         env:
