@@ -6,8 +6,8 @@ Lists all APT repositories.
 
 from typing import Any
 
-from cockpit_apt_bridge.utils.errors import CacheError
-from cockpit_apt_bridge.utils.repository_parser import parse_repositories
+from cockpit_apt.utils.errors import CacheError
+from cockpit_apt.utils.repository_parser import parse_repositories
 
 
 def execute() -> list[dict[str, Any]]:

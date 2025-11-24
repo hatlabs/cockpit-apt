@@ -33,7 +33,7 @@ Example Usage:
 import sys
 from typing import NoReturn
 
-from cockpit_apt_bridge.commands import (
+from cockpit_apt.commands import (
     dependencies,
     details,
     files,
@@ -48,8 +48,8 @@ from cockpit_apt_bridge.commands import (
     sections,
     update,
 )
-from cockpit_apt_bridge.utils.errors import APTBridgeError, format_error
-from cockpit_apt_bridge.utils.formatters import to_json
+from cockpit_apt.utils.errors import APTBridgeError, format_error
+from cockpit_apt.utils.formatters import to_json
 
 
 def print_usage() -> None:

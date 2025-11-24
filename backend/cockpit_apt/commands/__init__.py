@@ -6,7 +6,7 @@ command logic and returns the result.
 """
 
 # Import all command modules for easy access
-from cockpit_apt_bridge.commands import (
+from cockpit_apt.commands import (
     dependencies,
     details,
     files,

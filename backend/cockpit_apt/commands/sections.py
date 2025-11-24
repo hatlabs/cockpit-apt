@@ -6,7 +6,7 @@ Lists all Debian sections with package counts.
 
 from typing import Any
 
-from cockpit_apt_bridge.utils.errors import CacheError
+from cockpit_apt.utils.errors import CacheError
 
 
 def execute() -> list[dict[str, Any]]:
