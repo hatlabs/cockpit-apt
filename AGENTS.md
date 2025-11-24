@@ -186,7 +186,7 @@ See [README.md](README.md) for detailed setup instructions.
 
 ```
 backend/                          # Python backend
-  cockpit_apt_bridge/             # Main package
+  cockpit_apt/                     # Main package
     cli.py                        # Entry point
     commands/                     # Command handlers
       search.py, details.py, ...

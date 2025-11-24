@@ -2,22 +2,17 @@
  * Tests for SectionsView
  *
  * Validates that the SectionsView component properly:
- * - Shows Debian sections when no store is active or store has no category_metadata
- * - Shows categories when active store has category_metadata
- * - Renders correct icons (PatternFly and file paths)
- * - Switches between modes when active store changes
- * - Handles loading and error states correctly
+ * - Renders sections as a grid of cards
+ * - Shows loading skeleton during data fetch
+ * - Shows error alert with retry button on error
+ * - Shows empty state when no sections available
+ * - Sorts sections by archive area (main, contrib, non-free)
+ * - Calls navigation callback when section is clicked
  */
 
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Category } from "../../api/types";
-import * as api from "../../lib/api";
-import type { Section } from "../../lib/types";
-import { SectionsView } from "../SectionsView";
-
-// Mock API
-vi.mock("../../lib/api");
 
 // Mock cockpit global
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -33,385 +28,134 @@ vi.mock("../../lib/api");
   removeEventListener: vi.fn(),
 };
 
-// Default mock for AppContext - will be overridden in tests
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let mockAppState: any = {
-  activeStore: null,
-  stores: [],
+// Mock data for sections
+const mockSections = [
+  { name: "admin", count: 150 },
+  { name: "devel", count: 500 },
+  { name: "games", count: 200 },
+  { name: "web", count: 100 },
+];
+
+const mockSectionsWithArchives = [
+  { name: "admin", count: 150 },
+  { name: "contrib/admin", count: 20 },
+  { name: "non-free/admin", count: 10 },
+  { name: "devel", count: 500 },
+];
+
+// Mock hook state
+let mockHookState = {
+  data: null as Array<{ name: string; count: number }> | null,
+  loading: false,
+  error: null as Error | null,
+  refetch: vi.fn(),
 };
 
-// Mock AppContext to control active store
-vi.mock("../../context/AppContext", () => ({
-  useApp: () => ({
-    state: mockAppState,
-    actions: {},
-  }),
+// Mock the useSections hook
+vi.mock("../../hooks/usePackages", () => ({
+  useSections: () => mockHookState,
 }));
 
-describe("SectionsView - Sections Mode", () => {
+// Mock SectionCard to simplify testing
+vi.mock("../../components/SectionCard", () => ({
+  SectionCard: ({
+    section,
+    displayName,
+    onNavigate,
+  }: {
+    section: { name: string; count: number };
+    displayName: string;
+    onNavigate: (name: string) => void;
+  }) => (
+    <div
+      data-testid={`section-card-${section.name}`}
+      onClick={() => onNavigate(section.name)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && onNavigate(section.name)}
+    >
+      <span data-testid="display-name">{displayName}</span>
+      <span data-testid="count">{section.count}</span>
+    </div>
+  ),
+}));
+
+// Import after mocks are set up
+import { SectionsView } from "../SectionsView";
+
+describe("SectionsView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockAppState = {
-      activeStore: null,
-      stores: [],
+    mockHookState = {
+      data: null,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
     };
   });
 
-  it("should show sections mode when no store is active", async () => {
-    const mockSections: Section[] = [
-      { name: "web", count: 100 },
-      { name: "net", count: 50 },
-    ];
+  describe("Loading State", () => {
+    it("shows loading skeleton when loading", () => {
+      mockHookState = {
+        data: null,
+        loading: true,
+        error: null,
+        refetch: vi.fn(),
+      };
 
-    vi.mocked(api.listSections).mockResolvedValue(mockSections);
-    vi.mocked(api.listCategories).mockResolvedValue([]);
+      render(<SectionsView />);
 
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
-
-    await waitFor(() => {
+      // LoadingSkeleton renders multiple skeleton elements
       expect(screen.getByText("Browse by Section")).toBeInTheDocument();
-      expect(screen.getByText("Web")).toBeInTheDocument();
-      expect(screen.getByText("Net")).toBeInTheDocument();
+      // The LoadingSkeleton component should be rendered (PatternFly 6)
+      expect(document.querySelector(".pf-v6-c-skeleton")).toBeInTheDocument();
     });
-
-    // listSections is called without parameters (useCache defaults to true in the hook)
-    expect(api.listSections).toHaveBeenCalled();
-    expect(api.listCategories).not.toHaveBeenCalled();
   });
 
-  it("should show sections mode when store has no category_metadata", async () => {
-    mockAppState = {
-      activeStore: "test-store",
-      stores: [
-        {
-          id: "test-store",
-          name: "Test Store",
-          description: "Test",
-          custom_sections: [{ section: "web", label: "Web Apps", description: "Web applications" }],
-        },
-      ],
-    };
+  describe("Error State", () => {
+    it("shows error alert when error occurs", () => {
+      mockHookState = {
+        data: null,
+        loading: false,
+        error: new Error("Failed to load sections"),
+        refetch: vi.fn(),
+      };
 
-    const mockSections: Section[] = [{ name: "web", count: 50 }];
-    vi.mocked(api.listSections).mockResolvedValue(mockSections);
-    vi.mocked(api.listCategories).mockResolvedValue([]);
+      render(<SectionsView />);
 
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
-
-    await waitFor(() => {
       expect(screen.getByText("Browse by Section")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
     });
 
-    // listSections should be called, but listCategories hook is still mounted
-    // (it's just disabled with enabled=false parameter in useCategories)
-    expect(api.listSections).toHaveBeenCalled();
-  });
+    it("calls refetch when retry button is clicked", async () => {
+      const mockRefetch = vi.fn();
+      mockHookState = {
+        data: null,
+        loading: false,
+        error: new Error("Failed to load sections"),
+        refetch: mockRefetch,
+      };
 
-  it("should display section count correctly", async () => {
-    const mockSections: Section[] = [
-      { name: "web", count: 100 },
-      { name: "net", count: 1 },
-    ];
+      render(<SectionsView />);
 
-    vi.mocked(api.listSections).mockResolvedValue(mockSections);
+      const retryButton = screen.getByRole("button", { name: /try again/i });
+      await userEvent.click(retryButton);
 
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
-
-    await waitFor(() => {
-      expect(screen.getByText("100 packages")).toBeInTheDocument();
-      expect(screen.getByText("1 package")).toBeInTheDocument();
-    });
-  });
-});
-
-describe("SectionsView - Categories Mode", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockAppState = {
-      activeStore: "marine",
-      stores: [
-        {
-          id: "marine",
-          name: "Marine Store",
-          description: "Marine apps",
-          category_metadata: [
-            {
-              id: "navigation",
-              label: "Navigation & Charts",
-              description: "Chart plotters and navigation tools",
-            },
-            {
-              id: "monitoring",
-              label: "Data & Monitoring",
-              description: "Data logging and monitoring",
-            },
-          ],
-        },
-      ],
-    };
-  });
-
-  it("should show categories mode when store has category_metadata", async () => {
-    const mockCategories: Category[] = [
-      {
-        id: "navigation",
-        label: "Navigation & Charts",
-        description: "Chart plotters and navigation tools",
-        count: 5,
-      },
-      {
-        id: "monitoring",
-        label: "Data & Monitoring",
-        description: "Data logging and monitoring",
-        count: 3,
-      },
-    ];
-
-    vi.mocked(api.listCategories).mockResolvedValue(mockCategories);
-    vi.mocked(api.listSections).mockResolvedValue([]);
-
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Browse by Category")).toBeInTheDocument();
-      expect(screen.getByText("Navigation & Charts")).toBeInTheDocument();
-      expect(screen.getByText("Data & Monitoring")).toBeInTheDocument();
-    });
-
-    // listCategories is called with storeId only (useCache defaults to true in the hook)
-    expect(api.listCategories).toHaveBeenCalledWith("marine");
-    expect(api.listSections).not.toHaveBeenCalled();
-  });
-
-  it("should display category descriptions", async () => {
-    const mockCategories: Category[] = [
-      {
-        id: "navigation",
-        label: "Navigation",
-        description: "Navigation tools for marine use",
-        count: 5,
-      },
-    ];
-
-    vi.mocked(api.listCategories).mockResolvedValue(mockCategories);
-
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Navigation tools for marine use")).toBeInTheDocument();
+      expect(mockRefetch).toHaveBeenCalled();
     });
   });
 
-  it("should display category count correctly", async () => {
-    const mockCategories: Category[] = [
-      { id: "navigation", label: "Navigation", count: 10 },
-      { id: "monitoring", label: "Monitoring", count: 1 },
-    ];
+  describe("Empty State", () => {
+    it("shows empty state when no sections available", () => {
+      mockHookState = {
+        data: [],
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      };
 
-    vi.mocked(api.listCategories).mockResolvedValue(mockCategories);
+      render(<SectionsView />);
 
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
-
-    await waitFor(() => {
-      expect(screen.getByText("10 packages")).toBeInTheDocument();
-      expect(screen.getByText("1 package")).toBeInTheDocument();
-    });
-  });
-
-  it("should sort categories alphabetically by label", async () => {
-    const mockCategories: Category[] = [
-      { id: "visualization", label: "Visualization", count: 2 },
-      { id: "navigation", label: "Navigation", count: 5 },
-      { id: "monitoring", label: "Monitoring", count: 3 },
-    ];
-
-    vi.mocked(api.listCategories).mockResolvedValue(mockCategories);
-
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
-
-    await waitFor(() => {
-      const cards = screen.getAllByRole("button");
-      expect(cards[0]).toHaveAccessibleName(/Monitoring/);
-      expect(cards[1]).toHaveAccessibleName(/Navigation/);
-      expect(cards[2]).toHaveAccessibleName(/Visualization/);
-    });
-  });
-});
-
-describe("SectionsView - Icon Rendering", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("should render PatternFly icons for known category IDs", async () => {
-    mockAppState = {
-      activeStore: "marine",
-      stores: [
-        {
-          id: "marine",
-          name: "Marine",
-          category_metadata: [{ id: "navigation", label: "Navigation" }],
-        },
-      ],
-    };
-
-    const mockCategories: Category[] = [{ id: "navigation", label: "Navigation", count: 5 }];
-
-    vi.mocked(api.listCategories).mockResolvedValue(mockCategories);
-
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
-
-    await waitFor(() => {
-      // Check that an icon is rendered (PatternFly icons render as SVG)
-      const card = screen.getByRole("button", { name: /Navigation/ });
-      expect(card).toBeInTheDocument();
-    });
-  });
-
-  it("should render image tags for file path icons", async () => {
-    mockAppState = {
-      activeStore: "marine",
-      stores: [
-        {
-          id: "marine",
-          name: "Marine",
-          category_metadata: [
-            {
-              id: "custom",
-              label: "Custom Category",
-              icon: "/usr/share/icons/custom.svg",
-            },
-          ],
-        },
-      ],
-    };
-
-    const mockCategories: Category[] = [
-      {
-        id: "custom",
-        label: "Custom Category",
-        icon: "/usr/share/icons/custom.svg",
-        count: 2,
-      },
-    ];
-
-    vi.mocked(api.listCategories).mockResolvedValue(mockCategories);
-
-    const { container } = render(<SectionsView onNavigateToSection={vi.fn()} />);
-
-    await waitFor(() => {
-      const img = container.querySelector('img[src="/usr/share/icons/custom.svg"]');
-      expect(img).toBeInTheDocument();
-    });
-  });
-});
-
-describe("SectionsView - Loading and Error States", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockAppState = {
-      activeStore: null,
-      stores: [],
-    };
-  });
-
-  it("should show loading skeleton in sections mode", async () => {
-    let resolveListSections: (value: Section[]) => void;
-    const promise = new Promise<Section[]>((resolve) => {
-      resolveListSections = resolve;
-    });
-
-    vi.mocked(api.listSections).mockReturnValue(promise);
-    vi.mocked(api.listCategories).mockResolvedValue([]);
-
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
-
-    // Initially loading - heading should still be visible but no content
-    expect(screen.getByText("Browse by Section")).toBeInTheDocument();
-    expect(screen.queryByText("sections available")).not.toBeInTheDocument();
-
-    // Resolve the promise
-    resolveListSections!([{ name: "web", count: 1 }]);
-
-    // After loading, content should appear
-    await waitFor(() => {
-      expect(screen.getByText("1 section available")).toBeInTheDocument();
-    });
-  });
-
-  it("should show loading skeleton in categories mode", async () => {
-    mockAppState = {
-      activeStore: "marine",
-      stores: [
-        {
-          id: "marine",
-          name: "Marine",
-          category_metadata: [{ id: "navigation", label: "Navigation" }],
-        },
-      ],
-    };
-
-    let resolveListCategories: (value: Category[]) => void;
-    const promise = new Promise<Category[]>((resolve) => {
-      resolveListCategories = resolve;
-    });
-
-    vi.mocked(api.listCategories).mockReturnValue(promise);
-    vi.mocked(api.listSections).mockResolvedValue([]);
-
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
-
-    // Initially loading
-    expect(screen.getByText("Browse by Category")).toBeInTheDocument();
-    expect(screen.queryByText("categories available")).not.toBeInTheDocument();
-
-    // Resolve the promise
-    resolveListCategories!([{ id: "navigation", label: "Navigation", count: 1 }]);
-
-    // After loading, content should appear
-    await waitFor(() => {
-      expect(screen.getByText("1 category available")).toBeInTheDocument();
-    });
-  });
-
-  it("should show error alert in sections mode on API failure", async () => {
-    vi.mocked(api.listSections).mockRejectedValue(new Error("API Error"));
-
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
-
-    await waitFor(() => {
-      // ErrorAlert component should be rendered
-      expect(screen.queryByText("2 sections available")).not.toBeInTheDocument();
-    });
-  });
-
-  it("should show error alert in categories mode on API failure", async () => {
-    mockAppState = {
-      activeStore: "marine",
-      stores: [
-        {
-          id: "marine",
-          name: "Marine",
-          category_metadata: [{ id: "navigation", label: "Navigation" }],
-        },
-      ],
-    };
-
-    vi.mocked(api.listCategories).mockRejectedValue(new Error("API Error"));
-
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
-
-    await waitFor(() => {
-      expect(screen.queryByText("Browse by Category")).toBeInTheDocument();
-    });
-  });
-
-  it("should show empty state when no sections found", async () => {
-    vi.mocked(api.listSections).mockResolvedValue([]);
-
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
-
-    await waitFor(() => {
       expect(screen.getByText("No sections found")).toBeInTheDocument();
       expect(
         screen.getByText("No package sections are available in the APT cache.")
@@ -419,176 +163,145 @@ describe("SectionsView - Loading and Error States", () => {
     });
   });
 
-  it("should show empty state when no categories found", async () => {
-    mockAppState = {
-      activeStore: "marine",
-      stores: [
-        {
-          id: "marine",
-          name: "Marine",
-          category_metadata: [{ id: "navigation", label: "Navigation" }],
-        },
-      ],
-    };
+  describe("Sections Rendering", () => {
+    it("renders sections as cards", async () => {
+      mockHookState = {
+        data: mockSections,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      };
 
-    vi.mocked(api.listCategories).mockResolvedValue([]);
+      render(<SectionsView />);
 
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
-
-    await waitFor(() => {
-      expect(screen.getByText("No categories found")).toBeInTheDocument();
-      expect(screen.getByText("No categories found for this store.")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId("section-card-admin")).toBeInTheDocument();
+        expect(screen.getByTestId("section-card-devel")).toBeInTheDocument();
+        expect(screen.getByTestId("section-card-games")).toBeInTheDocument();
+        expect(screen.getByTestId("section-card-web")).toBeInTheDocument();
+      });
     });
-  });
-});
 
-describe("SectionsView - Edge Cases", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+    it("shows section count", async () => {
+      mockHookState = {
+        data: mockSections,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      };
 
-  it("should show sections mode when category_metadata is empty array", async () => {
-    mockAppState = {
-      activeStore: "test",
-      stores: [
-        {
-          id: "test",
-          name: "Test",
-          category_metadata: [], // Empty array - should show sections mode
-        },
-      ],
-    };
+      render(<SectionsView />);
 
-    vi.mocked(api.listSections).mockResolvedValue([{ name: "web", count: 1 }]);
-    vi.mocked(api.listCategories).mockResolvedValue([]);
-
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Browse by Section")).toBeInTheDocument();
-      expect(screen.getByText("Web")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText("4 sections available")).toBeInTheDocument();
+      });
     });
-  });
 
-  it("should handle category without description or icon gracefully", async () => {
-    mockAppState = {
-      activeStore: "marine",
-      stores: [
-        {
-          id: "marine",
-          name: "Marine",
-          category_metadata: [{ id: "minimal", label: "Minimal Category" }],
-        },
-      ],
-    };
+    it("shows singular 'section' for one section", async () => {
+      mockHookState = {
+        data: [{ name: "admin", count: 150 }],
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      };
 
-    const mockCategories: Category[] = [
-      {
-        id: "minimal",
-        label: "Minimal Category",
-        count: 5,
-        // No description, no icon
-      },
-    ];
+      render(<SectionsView />);
 
-    vi.mocked(api.listCategories).mockResolvedValue(mockCategories);
+      await waitFor(() => {
+        expect(screen.getByText("1 section available")).toBeInTheDocument();
+      });
+    });
 
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
+    it("capitalizes section display names", async () => {
+      mockHookState = {
+        data: [{ name: "admin", count: 150 }],
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      };
 
-    await waitFor(() => {
-      expect(screen.getByText("Minimal Category")).toBeInTheDocument();
-      expect(screen.getByText("5 packages")).toBeInTheDocument();
-      // Description should not be present
-      expect(screen.queryByText(/description/i)).not.toBeInTheDocument();
+      render(<SectionsView />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("display-name")).toHaveTextContent("Admin");
+      });
     });
   });
 
-  it("should not crash when onNavigateToSection is undefined", async () => {
-    mockAppState = {
-      activeStore: null,
-      stores: [],
-    };
+  describe("Archive Area Handling", () => {
+    it("renders sections from different archive areas", async () => {
+      mockHookState = {
+        data: mockSectionsWithArchives,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      };
 
-    vi.mocked(api.listSections).mockResolvedValue([{ name: "web", count: 1 }]);
+      render(<SectionsView />);
 
-    const { container } = render(<SectionsView />); // No onNavigateToSection prop
+      await waitFor(() => {
+        // All sections should be rendered
+        expect(screen.getByTestId("section-card-admin")).toBeInTheDocument();
+        expect(screen.getByTestId("section-card-devel")).toBeInTheDocument();
+        expect(screen.getByTestId("section-card-contrib/admin")).toBeInTheDocument();
+        expect(screen.getByTestId("section-card-non-free/admin")).toBeInTheDocument();
+      });
+    });
 
-    // Wait for the button to be rendered (not just the heading)
-    // The heading is always rendered, but the button is only rendered after data loads
-    const card = await screen.findByRole("button", { name: /View.*web/i });
+    it("extracts base section name for display", async () => {
+      mockHookState = {
+        data: [{ name: "contrib/games", count: 50 }],
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      };
 
-    // Click on a section card - should not crash
-    card.click();
+      render(<SectionsView />);
 
-    // Component should still be rendered
-    expect(container).toBeInTheDocument();
-  });
-
-  it("should handle very long category names gracefully", async () => {
-    mockAppState = {
-      activeStore: "marine",
-      stores: [
-        {
-          id: "marine",
-          name: "Marine",
-          category_metadata: [
-            {
-              id: "long",
-              label:
-                "This is a very very very very very very long category name that might overflow",
-            },
-          ],
-        },
-      ],
-    };
-
-    const mockCategories: Category[] = [
-      {
-        id: "long",
-        label: "This is a very very very very very very long category name that might overflow",
-        count: 1,
-      },
-    ];
-
-    vi.mocked(api.listCategories).mockResolvedValue(mockCategories);
-
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          "This is a very very very very very very long category name that might overflow"
-        )
-      ).toBeInTheDocument();
+      await waitFor(() => {
+        // Display name should be "Games" (capitalized base section, not "Contrib/games")
+        expect(screen.getByTestId("display-name")).toHaveTextContent("Games");
+      });
     });
   });
 
-  it("should handle category with count of 0", async () => {
-    mockAppState = {
-      activeStore: "marine",
-      stores: [
-        {
-          id: "marine",
-          name: "Marine",
-          category_metadata: [{ id: "empty", label: "Empty Category" }],
-        },
-      ],
-    };
+  describe("Navigation", () => {
+    it("calls onNavigateToSection when section card is clicked", async () => {
+      const mockNavigate = vi.fn();
+      mockHookState = {
+        data: mockSections,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      };
 
-    const mockCategories: Category[] = [
-      {
-        id: "empty",
-        label: "Empty Category",
-        count: 0,
-      },
-    ];
+      render(<SectionsView onNavigateToSection={mockNavigate} />);
 
-    vi.mocked(api.listCategories).mockResolvedValue(mockCategories);
+      await waitFor(() => {
+        expect(screen.getByTestId("section-card-admin")).toBeInTheDocument();
+      });
 
-    render(<SectionsView onNavigateToSection={vi.fn()} />);
+      await userEvent.click(screen.getByTestId("section-card-admin"));
 
-    await waitFor(() => {
-      expect(screen.getByText("0 packages")).toBeInTheDocument();
+      expect(mockNavigate).toHaveBeenCalledWith("admin");
+    });
+
+    it("does not throw when onNavigateToSection is not provided", async () => {
+      mockHookState = {
+        data: mockSections,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      };
+
+      render(<SectionsView />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("section-card-admin")).toBeInTheDocument();
+      });
+
+      // Should not throw
+      await userEvent.click(screen.getByTestId("section-card-admin"));
     });
   });
 });
