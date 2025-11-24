@@ -304,7 +304,7 @@ sudo cp -r frontend/dist/* /usr/share/cockpit/apt/
 ```
 cockpit-apt/
 ├── backend/                  # Python backend
-│   ├── cockpit_apt_bridge/   # Main package
+│   ├── cockpit_apt/          # Main package
 │   │   ├── cli.py            # CLI entry point
 │   │   ├── commands/         # Command handlers
 │   │   │   └── search.py     # Search command
