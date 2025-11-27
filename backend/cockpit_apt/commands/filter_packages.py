@@ -2,6 +2,22 @@
 Package filter command implementation.
 
 Filters packages with cascade filtering: repository → tab → search → limit.
+
+Performance Considerations:
+    This command iterates through the entire APT cache on every request.
+    On systems with 10,000+ packages, this can take 100-500ms.
+
+    Mitigations in place:
+    - Result limiting (default 1000 packages)
+    - Cascade filtering with early exits (skip non-matching packages quickly)
+    - Simple in-memory operations (no disk I/O during filtering)
+
+    Future optimizations if needed:
+    - Package list caching with invalidation
+    - Indexing frequently-searched fields
+    - Lazy evaluation with generators
+
+    Current performance is acceptable for typical usage patterns.
 """
 
 from typing import Any
