@@ -28,7 +28,7 @@ describe("API Wrapper", () => {
   });
 
   describe("listRepositories", () => {
-    it("should call with store filter", async () => {
+    it("should list repositories", async () => {
       const mockRepos = [
         {
           id: "marine:stable",
@@ -54,10 +54,10 @@ describe("API Wrapper", () => {
 
       mockSpawn.mockReturnValue(mockProc);
 
-      const result = await listRepositories("marine");
+      const result = await listRepositories();
       expect(result).toEqual(mockRepos);
       expect(mockSpawn).toHaveBeenCalledWith(
-        ["cockpit-apt-bridge", "list-repositories", "--store", "marine"],
+        ["cockpit-apt-bridge", "list-repositories"],
         expect.any(Object)
       );
     });

@@ -23,6 +23,25 @@ export interface Section {
 }
 
 /**
+ * Category information with package count (for custom package stores)
+ */
+export interface Category {
+  id: string;
+  name: string;
+  description?: string;
+  count: number;
+}
+
+/**
+ * Custom section metadata (for store-specific custom sections)
+ */
+export interface CustomSection {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+/**
  * Package summary information
  */
 export interface Package {
