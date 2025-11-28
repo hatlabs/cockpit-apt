@@ -5,7 +5,6 @@
 
 import type {
   APIError,
-  Category,
   FilterPackagesResponse,
   FilterParams,
   Package,
@@ -134,21 +133,6 @@ export async function filterPackages(params: FilterParams = {}): Promise<FilterP
   }
 
   return executeCommand<FilterPackagesResponse>("filter-packages", args);
-}
-
-/**
- * List categories (auto-discovered from package tags)
- * Categories are extracted from package category:: tags
- */
-export async function listCategories(): Promise<Category[]> {
-  return executeCommand<Category[]>("list-categories");
-}
-
-/**
- * List packages in a specific category
- */
-export async function listPackagesByCategory(categoryId: string): Promise<Package[]> {
-  return executeCommand<Package[]>("list-packages-by-category", [categoryId]);
 }
 
 /**
