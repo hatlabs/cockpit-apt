@@ -33,7 +33,6 @@
  *   const details = await getPackageDetails('nginx');
  */
 
-import type { Category } from "../api/types";
 import { cache } from "./cache-manager";
 import { translateError } from "./error-handler";
 import type { Dependency, Package, PackageDetails, Section, UpgradablePackage } from "./types";

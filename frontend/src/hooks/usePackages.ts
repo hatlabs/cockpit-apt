@@ -23,7 +23,6 @@
 
 import { useEffect, useState } from "react";
 import * as api from "../lib/api";
-import type { Category } from "../api/types";
 import { APTError } from "../lib/error-handler";
 import type { Package, PackageDetails, Section, UpgradablePackage } from "../lib/types";
 
