@@ -36,13 +36,6 @@ export interface SectionsViewProps {
 
 const ARCHIVE_PREFIXES = ["contrib/", "non-free/", "non-free-firmware/"] as const;
 
-const ARCHIVE_PRIORITY: Record<string, number> = {
-  main: 0,
-  contrib: 1,
-  "non-free": 2,
-  "non-free-firmware": 3,
-};
-
 function parseSectionName(sectionName: string): {
   prefix: string | null;
   baseSection: string;
@@ -128,12 +121,17 @@ function sortSections(
   return [...sections].sort((a, b) => {
     const parsedA = parseSectionName(a.name);
     const parsedB = parseSectionName(b.name);
-    const priorityA = ARCHIVE_PRIORITY[parsedA.area] || 999;
-    const priorityB = ARCHIVE_PRIORITY[parsedB.area] || 999;
-    if (priorityA !== priorityB) {
-      return priorityA - priorityB;
+
+    // Prefixless sections (main archive) come first
+    const hasPrefixA = parsedA.prefix !== null;
+    const hasPrefixB = parsedB.prefix !== null;
+
+    if (hasPrefixA !== hasPrefixB) {
+      return hasPrefixA ? 1 : -1; // prefixless first
     }
-    return parsedA.baseSection.localeCompare(parsedB.baseSection);
+
+    // Within each group, sort alphabetically by full section name
+    return a.name.localeCompare(b.name);
   });
 }
 
