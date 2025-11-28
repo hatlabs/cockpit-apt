@@ -265,6 +265,104 @@ describe("SectionsView", () => {
     });
   });
 
+  describe("Section Sorting", () => {
+    it("sorts prefixless sections first, then prefixed sections", async () => {
+      const mixedSections = [
+        { name: "contrib/web", count: 15 },
+        { name: "admin", count: 150 },
+        { name: "non-free/games", count: 25 },
+        { name: "devel", count: 500 },
+        { name: "contrib/admin", count: 20 },
+        { name: "games", count: 200 },
+      ];
+
+      mockHookState = {
+        data: mixedSections,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      };
+
+      render(<SectionsView />);
+
+      await waitFor(() => {
+        const cards = screen.getAllByRole("button");
+        const cardNames = cards.map((card) => card.getAttribute("data-testid"));
+
+        // Prefixless sections should come first (admin, devel, games)
+        // Then prefixed sections (contrib/admin, contrib/web, non-free/games)
+        expect(cardNames).toEqual([
+          "section-card-admin",
+          "section-card-devel",
+          "section-card-games",
+          "section-card-contrib/admin",
+          "section-card-contrib/web",
+          "section-card-non-free/games",
+        ]);
+      });
+    });
+
+    it("sorts prefixless sections alphabetically", async () => {
+      const sections = [
+        { name: "web", count: 100 },
+        { name: "admin", count: 150 },
+        { name: "devel", count: 500 },
+        { name: "games", count: 200 },
+      ];
+
+      mockHookState = {
+        data: sections,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      };
+
+      render(<SectionsView />);
+
+      await waitFor(() => {
+        const cards = screen.getAllByRole("button");
+        const cardNames = cards.map((card) => card.getAttribute("data-testid"));
+
+        expect(cardNames).toEqual([
+          "section-card-admin",
+          "section-card-devel",
+          "section-card-games",
+          "section-card-web",
+        ]);
+      });
+    });
+
+    it("sorts prefixed sections alphabetically by full name", async () => {
+      const sections = [
+        { name: "non-free/web", count: 10 },
+        { name: "contrib/admin", count: 20 },
+        { name: "non-free/admin", count: 15 },
+        { name: "contrib/web", count: 25 },
+      ];
+
+      mockHookState = {
+        data: sections,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      };
+
+      render(<SectionsView />);
+
+      await waitFor(() => {
+        const cards = screen.getAllByRole("button");
+        const cardNames = cards.map((card) => card.getAttribute("data-testid"));
+
+        expect(cardNames).toEqual([
+          "section-card-contrib/admin",
+          "section-card-contrib/web",
+          "section-card-non-free/admin",
+          "section-card-non-free/web",
+        ]);
+      });
+    });
+  });
+
   describe("Navigation", () => {
     it("calls onNavigateToSection when section card is clicked", async () => {
       const mockNavigate = vi.fn();
