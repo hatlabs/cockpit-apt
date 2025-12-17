@@ -3,6 +3,11 @@ name: Main Branch CI/CD
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.repository }}-main-release
+  cancel-in-progress: false
 
 jobs:
   build-release:
