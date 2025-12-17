@@ -7,9 +7,9 @@ pre-commit:
       glob: "*.py"
       run: |
         if command -v uv >/dev/null 2>&1; then
-          cd backend && uv run ruff check --ignore SIM117,B904,E501 .
+          cd backend && uv run ruff check .
         elif command -v ruff >/dev/null 2>&1; then
-          cd backend && ruff check --ignore SIM117,B904,E501 .
+          cd backend && ruff check .
         else
           echo "WARNING: ruff not found, skipping"
           exit 0
