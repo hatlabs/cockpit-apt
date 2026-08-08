@@ -178,7 +178,7 @@ function bumpversion {
   fi
 
   # Run bumpversion
-  bumpversion "$BUMP_TYPE"
+  command bumpversion "$BUMP_TYPE"
 
   echo "✅ Version bumped and committed successfully"
   echo "📝 Push to remote:"
