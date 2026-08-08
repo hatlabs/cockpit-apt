@@ -1,9 +1,12 @@
 """
 Tests for install command.
 
-Tests the install command using mocked subprocess to avoid requiring root/APT.
+The command's own job is validation, the apt-get invocation, and the arguments
+it hands to run_apt_command; the runner's plumbing (status descriptor, draining,
+error classification) is covered against a real subprocess in test_apt_progress.py.
 """
 
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -11,173 +14,93 @@ import pytest
 from cockpit_apt.commands.install import execute
 from cockpit_apt.utils.errors import APTBridgeError, PackageNotFoundError
 
-# Mock paths target the shared module where subprocess calls now live
-_MOD = "cockpit_apt.utils.apt_progress"
+_RUNNER = "cockpit_apt.commands.install.run_apt_command"
+
+
+def _call_of(mock_runner: Mock) -> tuple[list[str], dict[str, Any]]:
+    mock_runner.assert_called_once()
+    args, kwargs = mock_runner.call_args
+    return args[0], kwargs
 
 
 class TestExecute:
     """Test execute function."""
 
-    @patch(f"{_MOD}.subprocess.Popen")
-    @patch(f"{_MOD}.os.pipe")
-    @patch(f"{_MOD}.os.close")
-    @patch(f"{_MOD}.os.fdopen")
-    @patch(f"{_MOD}.select.select")
-    @patch("builtins.print")
-    def test_install_success(
-        self, mock_print, mock_select, mock_fdopen, mock_close, mock_pipe, mock_popen
-    ):
-        """Test successful package installation."""
-        mock_pipe.return_value = (3, 4)
+    @patch(_RUNNER)
+    def test_install_invokes_apt_get_install(self, mock_runner: Mock):
+        assert execute("nginx") is None
 
-        status_lines = [
-            "pmstatus:nginx:25.0:Downloading nginx\n",
-            "pmstatus:nginx:50.0:Unpacking nginx\n",
-            "pmstatus:nginx:75.0:Setting up nginx\n",
-        ]
-        mock_status_file = Mock()
-        mock_status_file.read.side_effect = status_lines + [""]
-        mock_status_file.close = Mock()
-        mock_fdopen.return_value = mock_status_file
+        cmd, _ = _call_of(mock_runner)
+        assert cmd[:3] == ["apt-get", "install", "-y"]
+        assert cmd[-1] == "nginx"
 
-        mock_select.return_value = ([mock_status_file], [], [])
+    @patch(_RUNNER)
+    def test_install_keeps_existing_config_files(self, mock_runner: Mock):
+        execute("nginx")
 
-        mock_process = Mock()
-        mock_process.poll.side_effect = [None, None, None, 0]
-        mock_process.returncode = 0
-        mock_process.communicate.return_value = ("", "")
-        mock_popen.return_value = mock_process
+        cmd, _ = _call_of(mock_runner)
+        assert "Dpkg::Options::=--force-confdef" in cmd
+        assert "Dpkg::Options::=--force-confold" in cmd
 
-        result = execute("nginx")
+    @patch(_RUNNER)
+    def test_install_does_not_name_a_status_descriptor(self, mock_runner: Mock):
+        """The runner owns the descriptor number -- it knows which pipe it made."""
+        execute("nginx")
 
-        assert result is None
+        cmd, _ = _call_of(mock_runner)
+        assert not [arg for arg in cmd if arg.startswith("APT::Status-Fd")]
 
-        mock_popen.assert_called_once()
-        call_args = mock_popen.call_args
-        cmd = call_args[0][0]
-        assert "apt-get" in cmd
-        assert "install" in cmd
-        assert "nginx" in cmd
-        assert "-y" in cmd
+    @patch(_RUNNER)
+    def test_install_progress_is_monotonic(self, mock_runner: Mock):
+        execute("nginx")
 
-        assert mock_print.call_count >= 2
+        _, kwargs = _call_of(mock_runner)
+        assert kwargs["monotonic_progress"] is True
 
-        mock_close.assert_called()
+    @patch(_RUNNER)
+    def test_install_error_code(self, mock_runner: Mock):
+        execute("nginx")
 
-    @patch(f"{_MOD}.subprocess.Popen")
-    @patch(f"{_MOD}.os.pipe")
-    @patch(f"{_MOD}.os.close")
-    @patch(f"{_MOD}.os.fdopen")
-    @patch(f"{_MOD}.select.select")
-    def test_install_package_not_found(
-        self, mock_select, mock_fdopen, mock_close, mock_pipe, mock_popen
-    ):
-        """Test installation of non-existent package."""
-        mock_pipe.return_value = (3, 4)
-        mock_status_file = Mock()
-        mock_status_file.read.return_value = ""
-        mock_status_file.close = Mock()
-        mock_fdopen.return_value = mock_status_file
-        mock_select.return_value = ([], [], [])
+        _, kwargs = _call_of(mock_runner)
+        assert kwargs["error_code"] == "INSTALL_FAILED"
 
-        mock_process = Mock()
-        mock_process.poll.return_value = 100
-        mock_process.returncode = 100
-        mock_process.communicate.return_value = ("", "Unable to locate package nonexistent")
-        mock_popen.return_value = mock_process
+    @patch(_RUNNER)
+    def test_install_names_the_package_in_the_result(self, mock_runner: Mock):
+        execute("nginx")
 
-        with pytest.raises(PackageNotFoundError):
-            execute("nonexistent")
+        _, kwargs = _call_of(mock_runner)
+        assert kwargs["success_result"]["package_name"] == "nginx"
+        assert "nginx" in kwargs["success_result"]["message"]
 
-    @patch(f"{_MOD}.subprocess.Popen")
-    @patch(f"{_MOD}.os.pipe")
-    @patch(f"{_MOD}.os.close")
-    @patch(f"{_MOD}.os.fdopen")
-    @patch(f"{_MOD}.select.select")
-    def test_install_locked(self, mock_select, mock_fdopen, mock_close, mock_pipe, mock_popen):
-        """Test installation when package manager is locked."""
-        mock_pipe.return_value = (3, 4)
-        mock_status_file = Mock()
-        mock_status_file.read.return_value = ""
-        mock_status_file.close = Mock()
-        mock_fdopen.return_value = mock_status_file
-        mock_select.return_value = ([], [], [])
+    @patch(_RUNNER)
+    def test_missing_package_is_classified(self, mock_runner: Mock):
+        execute("nosuchpkg")
 
-        mock_process = Mock()
-        mock_process.poll.return_value = 100
-        mock_process.returncode = 100
-        mock_process.communicate.return_value = ("", "dpkg was interrupted")
-        mock_popen.return_value = mock_process
+        _, kwargs = _call_of(mock_runner)
+        error = kwargs["classify_error"]("E: Unable to locate package nosuchpkg")
 
-        with pytest.raises(APTBridgeError) as exc_info:
-            execute("nginx")
+        assert isinstance(error, PackageNotFoundError)
 
-        assert exc_info.value.code == "LOCKED"
+    @patch(_RUNNER)
+    def test_other_stderr_falls_through_to_the_runner(self, mock_runner: Mock):
+        execute("nginx")
 
-    @patch(f"{_MOD}.subprocess.Popen")
-    @patch(f"{_MOD}.os.pipe")
-    @patch(f"{_MOD}.os.close")
-    @patch(f"{_MOD}.os.fdopen")
-    @patch(f"{_MOD}.select.select")
-    def test_install_disk_full(self, mock_select, mock_fdopen, mock_close, mock_pipe, mock_popen):
-        """Test installation when disk is full."""
-        mock_pipe.return_value = (3, 4)
-        mock_status_file = Mock()
-        mock_status_file.read.return_value = ""
-        mock_status_file.close = Mock()
-        mock_fdopen.return_value = mock_status_file
-        mock_select.return_value = ([], [], [])
+        _, kwargs = _call_of(mock_runner)
 
-        mock_process = Mock()
-        mock_process.poll.return_value = 100
-        mock_process.returncode = 100
-        mock_process.communicate.return_value = ("", "You don't have enough free space")
-        mock_popen.return_value = mock_process
+        assert kwargs["classify_error"]("dpkg was interrupted") is None
+
+    @patch(_RUNNER)
+    def test_install_failure_propagates(self, mock_runner: Mock):
+        mock_runner.side_effect = APTBridgeError("Insufficient disk space", code="DISK_FULL")
 
         with pytest.raises(APTBridgeError) as exc_info:
             execute("nginx")
 
         assert exc_info.value.code == "DISK_FULL"
 
-    @patch(f"{_MOD}.subprocess.Popen")
-    @patch(f"{_MOD}.os.pipe")
-    @patch(f"{_MOD}.os.fdopen")
-    @patch(f"{_MOD}.select.select")
-    def test_install_generic_failure(self, mock_select, mock_fdopen, mock_pipe, mock_popen):
-        """Test installation with generic failure."""
-        mock_pipe.return_value = (3, 4)
-        mock_status_file = Mock()
-        mock_status_file.read.return_value = ""
-        mock_status_file.close = Mock()
-        mock_fdopen.return_value = mock_status_file
-        mock_select.return_value = ([], [], [])
-
-        mock_process = Mock()
-        mock_process.poll.return_value = 1
-        mock_process.returncode = 1
-        mock_process.communicate.return_value = ("", "Some error")
-        mock_popen.return_value = mock_process
-
-        with pytest.raises(APTBridgeError) as exc_info:
-            execute("nginx")
-
-        assert exc_info.value.code == "INSTALL_FAILED"
-
-    def test_install_invalid_package_name(self):
-        """Test installation with invalid package name."""
+    @patch(_RUNNER)
+    def test_install_invalid_package_name(self, mock_runner: Mock):
         with pytest.raises(APTBridgeError):
-            execute("../etc/passwd")
+            execute("invalid;name")
 
-        with pytest.raises(APTBridgeError):
-            execute("pkg;rm -rf /")
-
-    @patch(f"{_MOD}.subprocess.Popen")
-    @patch(f"{_MOD}.os.pipe")
-    def test_install_exception_handling(self, mock_pipe, mock_popen):
-        """Test exception handling during installation."""
-        mock_pipe.side_effect = Exception("Pipe creation failed")
-
-        with pytest.raises(APTBridgeError) as exc_info:
-            execute("nginx")
-
-        assert exc_info.value.code == "INTERNAL_ERROR"
+        mock_runner.assert_not_called()

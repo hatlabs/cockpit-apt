@@ -1,9 +1,13 @@
 """
 Tests for remove command.
 
-Tests the remove command using mocked subprocess to avoid requiring root/APT.
+The command's own job is validation, the essential-package guard, the apt-get
+invocation, and the arguments it hands to run_apt_command; the runner's plumbing
+(status descriptor, draining, error classification) is covered against a real
+subprocess in test_apt_progress.py.
 """
 
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -11,179 +15,91 @@ import pytest
 from cockpit_apt.commands.remove import execute
 from cockpit_apt.utils.errors import APTBridgeError, PackageNotFoundError
 
-# Mock paths target the shared module where subprocess calls now live
-_MOD = "cockpit_apt.utils.apt_progress"
+_RUNNER = "cockpit_apt.commands.remove.run_apt_command"
+
+
+def _call_of(mock_runner: Mock) -> tuple[list[str], dict[str, Any]]:
+    mock_runner.assert_called_once()
+    args, kwargs = mock_runner.call_args
+    return args[0], kwargs
 
 
 class TestExecute:
     """Test execute function."""
 
-    @patch(f"{_MOD}.subprocess.Popen")
-    @patch(f"{_MOD}.os.pipe")
-    @patch(f"{_MOD}.os.close")
-    @patch(f"{_MOD}.os.fdopen")
-    @patch(f"{_MOD}.select.select")
-    @patch("builtins.print")
-    def test_remove_success(
-        self, mock_print, mock_select, mock_fdopen, mock_close, mock_pipe, mock_popen
-    ):
-        """Test successful package removal."""
-        mock_pipe.return_value = (3, 4)
+    @patch(_RUNNER)
+    def test_remove_invokes_apt_get_remove(self, mock_runner: Mock):
+        assert execute("nginx") is None
 
-        status_lines = [
-            "pmstatus:nginx:25.0:Removing nginx\n",
-            "pmstatus:nginx:50.0:Removing nginx files\n",
-            "pmstatus:nginx:75.0:Cleaning up\n",
-        ]
-        mock_status_file = Mock()
-        mock_status_file.read.side_effect = status_lines + [""]
-        mock_fdopen.return_value = mock_status_file
+        cmd, _ = _call_of(mock_runner)
+        assert cmd == ["apt-get", "remove", "-y", "nginx"]
 
-        mock_select.return_value = ([mock_status_file], [], [])
+    @patch(_RUNNER)
+    def test_remove_does_not_name_a_status_descriptor(self, mock_runner: Mock):
+        """The runner owns the descriptor number -- it knows which pipe it made."""
+        execute("nginx")
 
-        mock_process = Mock()
-        mock_process.poll.side_effect = [None, None, None, 0]
-        mock_process.returncode = 0
-        mock_process.communicate.return_value = ("", "")
-        mock_popen.return_value = mock_process
+        cmd, _ = _call_of(mock_runner)
+        assert not [arg for arg in cmd if arg.startswith("APT::Status-Fd")]
 
-        result = execute("nginx")
+    @patch(_RUNNER)
+    def test_remove_error_code(self, mock_runner: Mock):
+        execute("nginx")
 
-        assert result is None
+        _, kwargs = _call_of(mock_runner)
+        assert kwargs["error_code"] == "REMOVE_FAILED"
 
-        mock_popen.assert_called_once()
-        call_args = mock_popen.call_args
-        cmd = call_args[0][0]
-        assert "apt-get" in cmd
-        assert "remove" in cmd
-        assert "nginx" in cmd
-        assert "-y" in cmd
+    @patch(_RUNNER)
+    def test_remove_names_the_package_in_the_result(self, mock_runner: Mock):
+        execute("nginx")
 
-    def test_remove_essential_package(self):
-        """Test removal of essential package is blocked."""
-        for essential_pkg in ["dpkg", "apt", "systemd", "bash"]:
-            with pytest.raises(APTBridgeError) as exc_info:
-                execute(essential_pkg)
+        _, kwargs = _call_of(mock_runner)
+        assert kwargs["success_result"]["package_name"] == "nginx"
+        assert "nginx" in kwargs["success_result"]["message"]
 
-            assert exc_info.value.code == "ESSENTIAL_PACKAGE"
+    @patch(_RUNNER)
+    def test_missing_package_is_classified(self, mock_runner: Mock):
+        execute("nosuchpkg")
 
-    @patch(f"{_MOD}.subprocess.Popen")
-    @patch(f"{_MOD}.os.pipe")
-    @patch(f"{_MOD}.os.close")
-    @patch(f"{_MOD}.os.fdopen")
-    @patch(f"{_MOD}.select.select")
-    def test_remove_not_installed(
-        self, mock_select, mock_fdopen, mock_close, mock_pipe, mock_popen
-    ):
-        """Test removal of package that's not installed."""
-        mock_pipe.return_value = (3, 4)
-        mock_status_file = Mock()
-        mock_status_file.read.return_value = ""
-        mock_status_file.close = Mock()
-        mock_fdopen.return_value = mock_status_file
-        mock_select.return_value = ([], [], [])
+        _, kwargs = _call_of(mock_runner)
 
-        mock_process = Mock()
-        mock_process.poll.return_value = 100
-        mock_process.returncode = 100
-        mock_process.communicate.return_value = ("", "Package 'notinstalled' is not installed")
-        mock_popen.return_value = mock_process
+        assert isinstance(
+            kwargs["classify_error"]("E: Unable to locate package nosuchpkg"),
+            PackageNotFoundError,
+        )
+        assert isinstance(
+            kwargs["classify_error"]("Package 'nosuchpkg' is not installed, so not removed"),
+            PackageNotFoundError,
+        )
 
-        with pytest.raises(PackageNotFoundError):
-            execute("notinstalled")
+    @patch(_RUNNER)
+    def test_other_stderr_falls_through_to_the_runner(self, mock_runner: Mock):
+        execute("nginx")
 
-    @patch(f"{_MOD}.subprocess.Popen")
-    @patch(f"{_MOD}.os.pipe")
-    @patch(f"{_MOD}.os.close")
-    @patch(f"{_MOD}.os.fdopen")
-    @patch(f"{_MOD}.select.select")
-    def test_remove_locked(self, mock_select, mock_fdopen, mock_close, mock_pipe, mock_popen):
-        """Test removal when package manager is locked."""
-        mock_pipe.return_value = (3, 4)
-        mock_status_file = Mock()
-        mock_status_file.read.return_value = ""
-        mock_status_file.close = Mock()
-        mock_fdopen.return_value = mock_status_file
-        mock_select.return_value = ([], [], [])
+        _, kwargs = _call_of(mock_runner)
 
-        mock_process = Mock()
-        mock_process.poll.return_value = 100
-        mock_process.returncode = 100
-        mock_process.communicate.return_value = ("", "dpkg was interrupted")
-        mock_popen.return_value = mock_process
+        assert kwargs["classify_error"]("dpkg was interrupted") is None
+
+    @patch(_RUNNER)
+    def test_remove_failure_propagates(self, mock_runner: Mock):
+        mock_runner.side_effect = APTBridgeError("Package manager is locked", code="LOCKED")
 
         with pytest.raises(APTBridgeError) as exc_info:
             execute("nginx")
 
         assert exc_info.value.code == "LOCKED"
 
-    @patch(f"{_MOD}.subprocess.Popen")
-    @patch(f"{_MOD}.os.pipe")
-    @patch(f"{_MOD}.os.close")
-    @patch(f"{_MOD}.os.fdopen")
-    @patch(f"{_MOD}.select.select")
-    def test_remove_disk_full(self, mock_select, mock_fdopen, mock_close, mock_pipe, mock_popen):
-        """Test removal when disk is full."""
-        mock_pipe.return_value = (3, 4)
-        mock_status_file = Mock()
-        mock_status_file.read.return_value = ""
-        mock_status_file.close = Mock()
-        mock_fdopen.return_value = mock_status_file
-        mock_select.return_value = ([], [], [])
-
-        mock_process = Mock()
-        mock_process.poll.return_value = 100
-        mock_process.returncode = 100
-        mock_process.communicate.return_value = ("", "You don't have enough free space")
-        mock_popen.return_value = mock_process
-
+    @patch(_RUNNER)
+    def test_remove_essential_package(self, mock_runner: Mock):
         with pytest.raises(APTBridgeError) as exc_info:
-            execute("nginx")
+            execute("systemd")
 
-        assert exc_info.value.code == "DISK_FULL"
+        assert exc_info.value.code == "ESSENTIAL_PACKAGE"
+        mock_runner.assert_not_called()
 
-    @patch(f"{_MOD}.subprocess.Popen")
-    @patch(f"{_MOD}.os.pipe")
-    @patch(f"{_MOD}.os.close")
-    @patch(f"{_MOD}.os.fdopen")
-    @patch(f"{_MOD}.select.select")
-    def test_remove_generic_failure(
-        self, mock_select, mock_fdopen, mock_close, mock_pipe, mock_popen
-    ):
-        """Test removal with generic failure."""
-        mock_pipe.return_value = (3, 4)
-        mock_status_file = Mock()
-        mock_status_file.read.return_value = ""
-        mock_status_file.close = Mock()
-        mock_fdopen.return_value = mock_status_file
-        mock_select.return_value = ([], [], [])
-
-        mock_process = Mock()
-        mock_process.poll.return_value = 1
-        mock_process.returncode = 1
-        mock_process.communicate.return_value = ("", "Some error")
-        mock_popen.return_value = mock_process
-
-        with pytest.raises(APTBridgeError) as exc_info:
-            execute("nginx")
-
-        assert exc_info.value.code == "REMOVE_FAILED"
-
-    def test_remove_invalid_package_name(self):
-        """Test removal with invalid package name."""
+    @patch(_RUNNER)
+    def test_remove_invalid_package_name(self, mock_runner: Mock):
         with pytest.raises(APTBridgeError):
-            execute("../etc/passwd")
+            execute("invalid;name")
 
-        with pytest.raises(APTBridgeError):
-            execute("pkg;rm -rf /")
-
-    @patch(f"{_MOD}.subprocess.Popen")
-    @patch(f"{_MOD}.os.pipe")
-    def test_remove_exception_handling(self, mock_pipe, mock_popen):
-        """Test exception handling during removal."""
-        mock_pipe.side_effect = Exception("Pipe creation failed")
-
-        with pytest.raises(APTBridgeError) as exc_info:
-            execute("nginx")
-
-        assert exc_info.value.code == "INTERNAL_ERROR"
+        mock_runner.assert_not_called()

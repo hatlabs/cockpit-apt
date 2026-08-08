@@ -107,7 +107,7 @@ def _run_before_deadline(cmd: list[str], **kwargs: Any) -> None:
     def target() -> None:
         try:
             _run(cmd, **kwargs)
-        except BaseException as exc:  # noqa: BLE001 - re-raised on the calling thread
+        except BaseException as exc:
             error.append(exc)
 
     worker = threading.Thread(target=target, daemon=True)

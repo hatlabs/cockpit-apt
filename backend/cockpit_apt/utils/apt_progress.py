@@ -14,6 +14,11 @@ from typing import Any
 
 from cockpit_apt.utils.errors import APTBridgeError
 
+_READ_SIZE = 65536
+
+# How long select() waits before re-checking whether the child is still alive.
+_POLL_INTERVAL_SECONDS = 0.1
+
 
 def parse_status_line(line: str) -> dict[str, Any] | None:
     """
@@ -48,6 +53,75 @@ def parse_status_line(line: str) -> dict[str, Any] | None:
         return None
 
 
+def _pump_output(
+    process: "subprocess.Popen[bytes]", status_read: int, monotonic_progress: bool
+) -> str:
+    """
+    Drain the status pipe and stderr until the child is finished, printing progress.
+
+    Both have to be read while apt runs, not after it exits: a pipe nobody reads
+    fills at 64 KiB and blocks the writer, and apt easily writes more than that.
+
+    Returns:
+        The child's accumulated stderr.
+    """
+    assert process.stderr is not None
+    stderr_fd = process.stderr.fileno()
+
+    open_fds = [status_read, stderr_fd]
+    stderr_chunks: list[bytes] = []
+    status_buffer = ""
+    last_percentage = 0
+
+    while open_fds:
+        ready, _, _ = select.select(open_fds, [], [], _POLL_INTERVAL_SECONDS)
+
+        if not ready:
+            # Nothing left to read and the child is gone. A descriptor inherited
+            # by a lingering grandchild would otherwise keep this loop running
+            # long after apt itself finished.
+            if process.poll() is not None:
+                break
+            continue
+
+        for fd in ready:
+            chunk = os.read(fd, _READ_SIZE)
+
+            if not chunk:
+                open_fds.remove(fd)
+                continue
+
+            if fd == stderr_fd:
+                stderr_chunks.append(chunk)
+                continue
+
+            status_buffer += chunk.decode("utf-8", errors="replace")
+
+            while "\n" in status_buffer:
+                line, status_buffer = status_buffer.split("\n", 1)
+                progress_info = parse_status_line(line.strip())
+
+                if not progress_info:
+                    continue
+                if monotonic_progress and progress_info["percentage"] <= last_percentage:
+                    continue
+
+                last_percentage = progress_info["percentage"]
+                print(
+                    json.dumps({
+                        "type": "progress",
+                        "percentage": progress_info["percentage"],
+                        "message": progress_info["message"],
+                    }),
+                    flush=True,
+                )
+
+    process.stderr.close()
+    process.wait()
+
+    return b"".join(stderr_chunks).decode("utf-8", errors="replace")
+
+
 def run_apt_command(
     cmd: list[str],
     *,
@@ -62,11 +136,12 @@ def run_apt_command(
     """
     Run an apt-get command with Status-Fd progress reporting.
 
-    Sets up a pipe for apt-get's Status-Fd, reads progress updates via select(),
+    Sets up a pipe for apt-get's Status-Fd, appends the matching
+    `-o APT::Status-Fd=<n>` to the command, reads progress updates via select(),
     and outputs JSON progress lines to stdout.
 
     Args:
-        cmd: The full apt-get command to run.
+        cmd: The apt-get command to run, without the Status-Fd option.
         monotonic_progress: If True, only report strictly increasing percentages.
             Use False for upgrade where progress resets per package.
         success_message: Message for the final 100% progress line.
@@ -81,12 +156,15 @@ def run_apt_command(
         status_read, status_write = os.pipe()
 
         try:
+            # apt writes progress to the descriptor number it is given, and
+            # pass_fds keeps the pipe at whatever number os.pipe() handed out --
+            # it does not renumber it. Naming a fixed number here would point apt
+            # at a descriptor closed in the child, and every update would be lost.
             process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
+                [*cmd, "-o", f"APT::Status-Fd={status_write}"],
+                stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
                 pass_fds=(status_write,),
-                text=True,
                 env={**os.environ, "DEBIAN_FRONTEND": "noninteractive"},
             )
         except Exception:
@@ -96,42 +174,10 @@ def run_apt_command(
 
         os.close(status_write)
 
-        status_file = os.fdopen(status_read, "r")
-        status_buffer = ""
-        last_percentage = 0
-
-        while process.poll() is None:
-            ready, _, _ = select.select([status_file], [], [], 0.1)
-
-            if ready:
-                chunk = status_file.read(1024)
-                if chunk:
-                    status_buffer += chunk
-
-                    while "\n" in status_buffer:
-                        line, status_buffer = status_buffer.split("\n", 1)
-                        line = line.strip()
-
-                        if line:
-                            progress_info = parse_status_line(line)
-                            if progress_info:
-                                should_report = (
-                                    not monotonic_progress
-                                    or progress_info["percentage"] > last_percentage
-                                )
-                                if should_report:
-                                    last_percentage = progress_info["percentage"]
-                                    print(
-                                        json.dumps({
-                                            "type": "progress",
-                                            "percentage": progress_info["percentage"],
-                                            "message": progress_info["message"],
-                                        }),
-                                        flush=True,
-                                    )
-
-        _, stderr = process.communicate()
-        status_file.close()
+        try:
+            stderr = _pump_output(process, status_read, monotonic_progress)
+        finally:
+            os.close(status_read)
 
         if process.returncode != 0:
             if classify_error:

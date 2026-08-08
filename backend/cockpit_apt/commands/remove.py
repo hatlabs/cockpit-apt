@@ -30,7 +30,7 @@ def execute(package_name: str) -> dict[str, Any] | None:
     """
     Remove a package using apt-get.
 
-    Uses apt-get remove with Status-Fd=3 for progress reporting.
+    Uses apt-get remove with Status-Fd progress reporting.
     Outputs progress as JSON lines to stdout:
     - Progress: {"type": "progress", "percentage": int, "message": str}
     - Final: {"success": bool, "message": str, "package_name": str}
@@ -54,7 +54,7 @@ def execute(package_name: str) -> dict[str, Any] | None:
             details="Removing this package may break your system",
         )
 
-    cmd = ["apt-get", "remove", "-y", "-o", "APT::Status-Fd=3", package_name]
+    cmd = ["apt-get", "remove", "-y", package_name]
 
     def _classify_error(stderr: str) -> APTBridgeError | None:
         if "Unable to locate package" in stderr or "is not installed" in stderr:
