@@ -170,15 +170,21 @@ function bumpversion {
 
   echo "🔢 Bumping $BUMP_TYPE version..."
 
-  # Check if bumpversion is installed
-  if ! command -v bumpversion &> /dev/null; then
+  # type -P searches PATH only; command -v would find this function and always pass
+  if ! type -P bumpversion &> /dev/null; then
     echo "Error: bumpversion not installed"
-    echo "Install with: pip install bump2version"
+    echo "Install with: uv tool install bump2version"
     exit 1
   fi
 
   # Run bumpversion
   command bumpversion "$BUMP_TYPE"
+
+  # The lock records the project's own version. Left stale it is rewritten by the
+  # next `uv sync`, and the dirty tree then blocks the following bump.
+  (cd backend && uv lock --quiet)
+  git add backend/uv.lock
+  git commit --amend --no-edit --quiet
 
   echo "✅ Version bumped and committed successfully"
   echo "📝 Push to remote:"
