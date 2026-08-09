@@ -16,7 +16,7 @@ def execute(package_name: str) -> dict[str, Any] | None:
     """
     Install a package using apt-get.
 
-    Uses apt-get install with Status-Fd=3 for progress reporting.
+    Uses apt-get install with Status-Fd progress reporting.
     Outputs progress as JSON lines to stdout:
     - Progress: {"type": "progress", "percentage": int, "message": str}
     - Final: {"success": bool, "message": str, "package_name": str}
@@ -38,8 +38,6 @@ def execute(package_name: str) -> dict[str, Any] | None:
         "install",
         "-y",
         "-o",
-        "APT::Status-Fd=3",
-        "-o",
         "Dpkg::Options::=--force-confdef",
         "-o",
         "Dpkg::Options::=--force-confold",
@@ -53,7 +51,6 @@ def execute(package_name: str) -> dict[str, Any] | None:
 
     run_apt_command(
         cmd,
-        monotonic_progress=True,
         success_message="Installation complete",
         success_result={
             "success": True,

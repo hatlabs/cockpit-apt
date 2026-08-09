@@ -403,8 +403,8 @@ git checkout -b feat/add-package-compare
 # ... edit files ...
 
 # 3. Run all local tests
-./run test                          # Backend: 129 tests
-cd frontend && npm run test         # Frontend: 156 tests
+./run test                          # Backend (pytest, in Docker)
+cd frontend && npm run test         # Frontend (vitest)
 npm run typecheck                   # TypeScript: 0 errors
 cd ..
 
@@ -509,6 +509,18 @@ npm run typecheck
 - Test error handling and edge cases
 - See `backend/tests/test_search.py` for examples
 
+**Where to put the mock boundary.** Mock the collaborator, not the plumbing
+underneath it. Command modules own their apt-get argv and the arguments they hand
+to `run_apt_command`, so their tests patch `run_apt_command` itself, with
+`autospec=True` so a renamed keyword fails the suite instead of passing silently
+(`backend/tests/test_install.py`). Code that drives a subprocess is tested against
+a real one — `backend/tests/fake_apt.py` stands in for apt-get and reads its status
+descriptor out of argv the way apt does. Patching `os.pipe`/`subprocess.Popen`
+reports full coverage of behaviour that never worked; see
+`backend/tests/test_apt_progress.py` for what the real-subprocess tests pin down.
+Any test that spawns a child runs under a deadline — the failure mode of that code
+is a hang, and the CI wrapper has no timeout.
+
 **Frontend (vitest)**:
 - Test TypeScript API wrapper
 - Test React components with React Testing Library
@@ -534,12 +546,10 @@ npm run typecheck
 
 **Checks performed:**
 1. **Backend Tests** - `./run test`
-   - 129 tests via pytest
-   - 89% code coverage
-   - Python 3.11+ in Docker container
+   - pytest, Python 3.11+, in a Docker container
 
 2. **Frontend Tests** - `npm run test`
-   - 156 tests via vitest
+   - vitest
    - Component and integration tests
    - Mock cockpit API
 

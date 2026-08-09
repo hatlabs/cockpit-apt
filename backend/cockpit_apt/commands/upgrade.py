@@ -14,7 +14,7 @@ def execute() -> dict[str, Any] | None:
     """
     Upgrade all upgradable packages using apt-get upgrade.
 
-    Uses apt-get upgrade with Status-Fd=3 for progress reporting.
+    Uses apt-get upgrade with Status-Fd progress reporting.
     Outputs progress as JSON lines to stdout:
     - Progress: {"type": "progress", "percentage": int, "message": str}
     - Final: {"success": bool, "message": str}
@@ -30,8 +30,6 @@ def execute() -> dict[str, Any] | None:
         "upgrade",
         "-y",
         "-o",
-        "APT::Status-Fd=3",
-        "-o",
         "Dpkg::Options::=--force-confdef",
         "-o",
         "Dpkg::Options::=--force-confold",
@@ -39,7 +37,6 @@ def execute() -> dict[str, Any] | None:
 
     run_apt_command(
         cmd,
-        monotonic_progress=False,
         success_message="Upgrade complete",
         success_result={"success": True, "message": "Upgrade complete"},
         error_code="UPGRADE_FAILED",
