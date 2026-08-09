@@ -51,7 +51,6 @@ def execute(package_name: str) -> dict[str, Any] | None:
 
     run_apt_command(
         cmd,
-        monotonic_progress=True,
         success_message="Installation complete",
         success_result={
             "success": True,

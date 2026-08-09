@@ -37,7 +37,6 @@ def execute() -> dict[str, Any] | None:
 
     run_apt_command(
         cmd,
-        monotonic_progress=False,
         success_message="Upgrade complete",
         success_result={"success": True, "message": "Upgrade complete"},
         error_code="UPGRADE_FAILED",

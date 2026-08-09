@@ -26,14 +26,14 @@ def _call_of(mock_runner: Mock) -> tuple[list[str], dict[str, Any]]:
 class TestExecute:
     """Test execute function."""
 
-    @patch(_RUNNER)
+    @patch(_RUNNER, autospec=True)
     def test_upgrade_invokes_apt_get_upgrade(self, mock_runner: Mock):
         assert execute() is None
 
         cmd, _ = _call_of(mock_runner)
         assert cmd[:3] == ["apt-get", "upgrade", "-y"]
 
-    @patch(_RUNNER)
+    @patch(_RUNNER, autospec=True)
     def test_upgrade_keeps_existing_config_files(self, mock_runner: Mock):
         """An unattended upgrade must not stop to ask about conffiles."""
         execute()
@@ -42,7 +42,7 @@ class TestExecute:
         assert "Dpkg::Options::=--force-confdef" in cmd
         assert "Dpkg::Options::=--force-confold" in cmd
 
-    @patch(_RUNNER)
+    @patch(_RUNNER, autospec=True)
     def test_upgrade_does_not_name_a_status_descriptor(self, mock_runner: Mock):
         """The runner owns the descriptor number -- it knows which pipe it made."""
         execute()
@@ -50,29 +50,21 @@ class TestExecute:
         cmd, _ = _call_of(mock_runner)
         assert not [arg for arg in cmd if arg.startswith("APT::Status-Fd")]
 
-    @patch(_RUNNER)
-    def test_upgrade_reports_per_package_progress_resets(self, mock_runner: Mock):
-        """Upgrade progress restarts at each package, so it is not monotonic."""
-        execute()
-
-        _, kwargs = _call_of(mock_runner)
-        assert kwargs["monotonic_progress"] is False
-
-    @patch(_RUNNER)
+    @patch(_RUNNER, autospec=True)
     def test_upgrade_error_code(self, mock_runner: Mock):
         execute()
 
         _, kwargs = _call_of(mock_runner)
         assert kwargs["error_code"] == "UPGRADE_FAILED"
 
-    @patch(_RUNNER)
+    @patch(_RUNNER, autospec=True)
     def test_upgrade_success_result(self, mock_runner: Mock):
         execute()
 
         _, kwargs = _call_of(mock_runner)
         assert kwargs["success_result"] == {"success": True, "message": "Upgrade complete"}
 
-    @patch(_RUNNER)
+    @patch(_RUNNER, autospec=True)
     def test_upgrade_failure_propagates(self, mock_runner: Mock):
         mock_runner.side_effect = APTBridgeError("Package manager is locked", code="LOCKED")
 

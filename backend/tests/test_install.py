@@ -26,7 +26,7 @@ def _call_of(mock_runner: Mock) -> tuple[list[str], dict[str, Any]]:
 class TestExecute:
     """Test execute function."""
 
-    @patch(_RUNNER)
+    @patch(_RUNNER, autospec=True)
     def test_install_invokes_apt_get_install(self, mock_runner: Mock):
         assert execute("nginx") is None
 
@@ -34,7 +34,7 @@ class TestExecute:
         assert cmd[:3] == ["apt-get", "install", "-y"]
         assert cmd[-1] == "nginx"
 
-    @patch(_RUNNER)
+    @patch(_RUNNER, autospec=True)
     def test_install_keeps_existing_config_files(self, mock_runner: Mock):
         execute("nginx")
 
@@ -42,7 +42,7 @@ class TestExecute:
         assert "Dpkg::Options::=--force-confdef" in cmd
         assert "Dpkg::Options::=--force-confold" in cmd
 
-    @patch(_RUNNER)
+    @patch(_RUNNER, autospec=True)
     def test_install_does_not_name_a_status_descriptor(self, mock_runner: Mock):
         """The runner owns the descriptor number -- it knows which pipe it made."""
         execute("nginx")
@@ -50,21 +50,14 @@ class TestExecute:
         cmd, _ = _call_of(mock_runner)
         assert not [arg for arg in cmd if arg.startswith("APT::Status-Fd")]
 
-    @patch(_RUNNER)
-    def test_install_progress_is_monotonic(self, mock_runner: Mock):
-        execute("nginx")
-
-        _, kwargs = _call_of(mock_runner)
-        assert kwargs["monotonic_progress"] is True
-
-    @patch(_RUNNER)
+    @patch(_RUNNER, autospec=True)
     def test_install_error_code(self, mock_runner: Mock):
         execute("nginx")
 
         _, kwargs = _call_of(mock_runner)
         assert kwargs["error_code"] == "INSTALL_FAILED"
 
-    @patch(_RUNNER)
+    @patch(_RUNNER, autospec=True)
     def test_install_names_the_package_in_the_result(self, mock_runner: Mock):
         execute("nginx")
 
@@ -72,7 +65,7 @@ class TestExecute:
         assert kwargs["success_result"]["package_name"] == "nginx"
         assert "nginx" in kwargs["success_result"]["message"]
 
-    @patch(_RUNNER)
+    @patch(_RUNNER, autospec=True)
     def test_missing_package_is_classified(self, mock_runner: Mock):
         execute("nosuchpkg")
 
@@ -81,7 +74,7 @@ class TestExecute:
 
         assert isinstance(error, PackageNotFoundError)
 
-    @patch(_RUNNER)
+    @patch(_RUNNER, autospec=True)
     def test_other_stderr_falls_through_to_the_runner(self, mock_runner: Mock):
         execute("nginx")
 
@@ -89,7 +82,7 @@ class TestExecute:
 
         assert kwargs["classify_error"]("dpkg was interrupted") is None
 
-    @patch(_RUNNER)
+    @patch(_RUNNER, autospec=True)
     def test_install_failure_propagates(self, mock_runner: Mock):
         mock_runner.side_effect = APTBridgeError("Insufficient disk space", code="DISK_FULL")
 
@@ -98,7 +91,7 @@ class TestExecute:
 
         assert exc_info.value.code == "DISK_FULL"
 
-    @patch(_RUNNER)
+    @patch(_RUNNER, autospec=True)
     def test_install_invalid_package_name(self, mock_runner: Mock):
         with pytest.raises(APTBridgeError):
             execute("invalid;name")
